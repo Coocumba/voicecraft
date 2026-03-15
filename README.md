@@ -163,3 +163,43 @@ The monorepo is set up and ready to extend:
 - Shared configs (Tailwind, TypeScript, ESLint) live in `packages/config` as `@voicecraft/config`.
 - Add new applications under `apps/` and new shared packages under `packages/`.
 - Run `pnpm install` from the repo root to install all workspace dependencies at once.
+
+---
+
+## Deployment
+
+### Deploying to Railway
+
+**Prerequisites:** Railway account, repo pushed to GitHub.
+
+**Steps:**
+
+1. Create a new Railway project from your GitHub repo.
+2. Add two services — both pointing to the same repo:
+
+**Service: web**
+
+| Setting | Value |
+|---|---|
+| Root Directory | `apps/web` |
+| Config file | `apps/web/railway.toml` (auto-detected) |
+
+Required environment variables:
+
+```
+NEXT_PUBLIC_APP_URL=https://<your-railway-domain>.up.railway.app
+NEXT_PUBLIC_APP_NAME=VoiceCraft
+```
+
+**Service: agent**
+
+| Setting | Value |
+|---|---|
+| Root Directory | `apps/agent` |
+| Config file | `apps/agent/railway.toml` (auto-detected) |
+
+Required environment variables: copy from `apps/agent/.env.example`.
+
+3. Railway auto-detects `railway.toml` in the service root and deploys.
+
+Note: `nixpacks.toml` files in each app directory give Railway precise control over build phases — Node 20 + pnpm workspace install for the web service, Python 3.11 + uv for the agent service.

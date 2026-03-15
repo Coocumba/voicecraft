@@ -1,0 +1,23 @@
+providers = ["node"]
+
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+# Go to monorepo root so pnpm resolves the full workspace graph,
+# including shared packages under packages/config.
+cmds = ["cd ../.. && pnpm install --frozen-lockfile"]
+
+[phases.build]
+# Run from apps/web (Railway CWD = Root Directory).
+# After the Next.js build, copy static assets into the standalone output —
+# Next.js standalone intentionally omits them to keep the bundle minimal;
+# they must be served from the same path structure.
+cmds = [
+  "pnpm --filter @voicecraft/web build",
+  "cp -r .next/static .next/standalone/.next/static",
+  "cp -r public .next/standalone/public 2>/dev/null || true"
+]
+
+[start]
+cmd = "node .next/standalone/server.js"
