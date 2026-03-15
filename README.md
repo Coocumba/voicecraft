@@ -15,6 +15,7 @@ AI-powered voice crafting — Next.js 16 + Python LiveKit agent, in a pnpm monor
 | Toasts          | Sonner                          |
 | Package manager | pnpm 10 (workspaces)            |
 | Voice agent     | Python + LiveKit (managed with uv) |
+| Auth            | NextAuth v5 (Auth.js)              | JWT sessions, Credentials provider |
 
 ---
 
@@ -61,11 +62,19 @@ uv sync
 ```
 voicecraft/
 ├── apps/
-│   ├── web/          # Next.js 16 — frontend + REST API
-│   └── agent/        # Python — LiveKit voice agent worker
+│   ├── web/                        # Next.js 16 — frontend + REST API
+│   │   └── src/
+│   │       ├── auth.ts             # NextAuth configuration
+│   │       ├── middleware.ts       # Route protection
+│   │       ├── app/
+│   │       │   ├── login/          # Login page
+│   │       │   └── dashboard/      # Protected dashboard
+│   │       └── components/
+│   │           └── auth/           # LoginForm, SignOutButton
+│   └── agent/                      # Python — LiveKit voice agent worker
 ├── packages/
-│   └── config/       # Shared Tailwind, TypeScript, ESLint configs
-├── package.json      # Monorepo root
+│   └── config/                     # Shared Tailwind, TypeScript, ESLint configs
+├── package.json                    # Monorepo root
 └── pnpm-workspace.yaml
 ```
 
@@ -122,6 +131,8 @@ Copy `.env.example` to `.env.local` before running the app. The `.env.local` fil
 |------------------------|------------------------------------------|
 | `NEXT_PUBLIC_APP_URL`  | Base URL of the app (e.g. `http://localhost:3000`) |
 | `NEXT_PUBLIC_APP_NAME` | Display name of the app (e.g. `VoiceCraft`)        |
+| `AUTH_SECRET`          | Required. Secret key for signing JWT tokens. Generate with `openssl rand -base64 32` |
+| `AUTH_TRUST_HOST`      | Set to `true` for non-Vercel deployments (Railway, Docker) |
 
 Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser.
 

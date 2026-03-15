@@ -15,6 +15,7 @@ VoiceCraft is a Next.js 16 application built with the App Router, TypeScript, an
 | Styling     | Tailwind CSS v3 + CSS variables     |
 | Fonts       | Lora (serif) + Source Sans 3 (sans) |
 | Toasts      | Sonner                              |
+| Auth        | NextAuth v5 (Auth.js)               |
 | Runtime     | Node.js 20+                         |
 
 ---
@@ -98,6 +99,27 @@ import { cn } from '@/lib/utils'
 
 ### No `any`
 Strict TypeScript is enabled. Do not use `any` — use `unknown` and narrow types properly.
+
+---
+
+## Authentication
+
+NextAuth v5 (Auth.js) with a Credentials provider and JWT sessions.
+
+| Concern | Location | Notes |
+|---|---|---|
+| Config | `src/auth.ts` | Credentials provider with JWT sessions |
+| Route protection | `src/middleware.ts` | Guards `/dashboard/*` |
+| Login page | `src/app/login/` | Server action → redirects to `/dashboard` on success |
+| Components | `src/components/auth/` | `LoginForm`, `SignOutButton` |
+
+**Reading the session:**
+- Server Components: `import { auth } from '@/auth'` then `const session = await auth()`
+- Client Components: `useSession()` from `next-auth/react`
+
+**Demo credentials:** `admin@voicecraft.dev` / `password123`
+
+**Adding OAuth providers (Google, GitHub, etc.):** add them to the `providers` array in `src/auth.ts`. See the [Auth.js provider docs](https://authjs.dev/reference/core/providers).
 
 ---
 

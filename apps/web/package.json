@@ -11,16 +11,19 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "next": "^16.1.6",
+    "next-auth": "5.0.0-beta.30",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "sonner": "^2.0.7"
   },
   "devDependencies": {
-    "@voicecraft/config": "workspace:*",
+    "@types/bcryptjs": "^3.0.0",
     "@types/node": "^20.0.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@voicecraft/config": "workspace:*",
     "autoprefixer": "^10.4.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.1.6",
