@@ -1,8 +1,10 @@
 [build]
 builder = "dockerfile"
+# Railway Root Directory must be set to "/" (repo root) for monorepo context
 dockerfilePath = "apps/web/Dockerfile"
 
 [deploy]
+# Standalone output places server.js at the root of the COPY destination
 startCommand = "node server.js"
 healthcheckPath = "/"
 healthcheckTimeout = 60

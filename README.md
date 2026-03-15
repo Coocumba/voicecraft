@@ -149,8 +149,8 @@ pnpm --filter @voicecraft/web <script>
 | Command                                                | Description                        |
 |--------------------------------------------------------|------------------------------------|
 | `uv sync`                                              | Install Python dependencies        |
-| `uv run uvicorn app.api.main:app --reload --port 8000` | Start the agent API server         |
-| `uv run python -m app.agent.worker start`              | Start the LiveKit voice agent      |
+| `uv run uvicorn src.api.main:app --reload --port 8000` | Start the agent API server         |
+| `uv run python -m src.agent.worker start`              | Start the LiveKit voice agent      |
 | `uv run pytest tests/ -v`                              | Run the Python test suite          |
 
 ---
@@ -173,34 +173,29 @@ Running the full stack locally requires only Docker — no Node.js or Python ins
 ### First-time setup
 
 ```bash
-# Copy env files and fill in your values
-cp apps/web/.env.local.example apps/web/.env.local   # edit as needed
-cp apps/agent/.env.example apps/agent/.env           # edit as needed
+# First time (generates lock files + copies env templates)
+make setup
+
+# Start everything
+make dev
+
+# Or run in background
+make dev-detach
 ```
 
 ### Common commands
 
-```bash
-# Start all services (web + api + agent)
-docker compose up
+| Command | Description |
+|---|---|
+| `make dev` | Setup + start all services |
+| `make down` | Stop all services |
+| `make reset` | Stop and wipe volumes |
+| `make rebuild` | Force rebuild after dep changes |
+| `make logs` | Follow all logs |
+| `make lock` | Regenerate uv.lock |
+| `make help` | Show all commands |
 
-# Rebuild after dependency changes (package.json, pyproject.toml, lock files)
-docker compose up --build
-
-# Run only specific services
-docker compose up web
-docker compose up api agent
-
-# View logs
-docker compose logs -f web
-docker compose logs -f api
-
-# Stop everything
-docker compose down
-
-# Stop and remove volumes (full reset — clears node_modules and .next cache)
-docker compose down -v
-```
+> After changing `apps/agent/pyproject.toml`, run `make lock` and commit `uv.lock` to keep production builds deterministic.
 
 ### Services
 
@@ -210,9 +205,9 @@ docker compose down -v
 | api (FastAPI) | http://localhost:8000 | Yes (--reload) |
 | agent (LiveKit) | — background worker | Yes (volume) |
 
-The `web` service uses the `dev` build target from `apps/web/Dockerfile`, which runs `pnpm dev` with Turbopack. Source changes under `apps/web/src/` and `apps/web/public/` are reflected immediately via volume mounts. Named volumes (`web_node_modules`, `web_app_node_modules`, `web_next`) ensure the container's installed packages are never overwritten by the host filesystem.
+The `web` service uses the `dev` build target from `apps/web/Dockerfile`, which runs `pnpm dev` with Turbopack. Source changes under `apps/web/src/` and `apps/web/public/` are reflected immediately via volume mounts. Dependencies are baked into the Docker image at build time — run `docker compose up --build` after changing `package.json`.
 
-The `api` and `agent` services both use the `runner` stage from `apps/agent/Dockerfile`. The compose file overrides the default `CMD` to add `--reload` (for `api`) and mounts `apps/agent/app/` so Python changes are picked up without a rebuild.
+The `api` and `agent` services both use the `runner` stage from `apps/agent/Dockerfile`. The compose file overrides the default `CMD` to add `--reload` (for `api`) and mounts `apps/agent/src/` so Python changes are picked up without a rebuild.
 
 ---
 

@@ -1,6 +1,12 @@
+const path = require('path')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  // Monorepo: tell Turbopack the workspace root is two levels up
+  turbopack: {
+    root: path.join(__dirname, '../..'),
+  },
   async headers() {
     return [
       {
@@ -12,7 +18,7 @@ const nextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
+            value: 'camera=(), geolocation=()',
           },
           {
             key: 'Strict-Transport-Security',

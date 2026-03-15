@@ -1,8 +1,12 @@
 [build]
 builder = "dockerfile"
-dockerfilePath = "apps/agent/Dockerfile"
+# Railway Root Directory must be set to "apps/agent"
+dockerfilePath = "Dockerfile"
 
 [deploy]
+# Dockerfile CMD runs uvicorn (API server)
+# For the LiveKit worker, create a separate Railway service with:
+#   startCommand = "python -m src.agent.worker start"
 healthcheckPath = "/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"

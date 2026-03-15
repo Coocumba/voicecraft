@@ -115,8 +115,8 @@ pnpm --filter @voicecraft/web <script>
 
 # Python agent (from apps/agent/)
 uv sync             # Install Python dependencies
-uv run uvicorn app.api.main:app --reload --port 8000
-uv run python -m app.agent.worker start
+uv run uvicorn src.api.main:app --reload --port 8000
+uv run python -m src.agent.worker start
 uv run pytest tests/ -v
 ```
 
