@@ -1,0 +1,10 @@
+{
+  "name": "@voicecraft/config",
+  "version": "0.0.1",
+  "private": true,
+  "exports": {
+    "./tailwind": "./tailwind.js",
+    "./tsconfig": "./tsconfig.base.json",
+    "./eslint": "./eslint.js"
+  }
+}

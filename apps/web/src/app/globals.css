@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Color palette — RGB triplets for Tailwind alpha support */
+    --color-cream: 247 244 238;
+    --color-ink: 26 24 20;
+    --color-muted: 122 117 108;
+    --color-border: 226 221 213;
+    --color-accent: 109 70 220;   /* violet — voice/audio brand */
+    --color-success: 45 106 79;
+    --color-white: 255 255 255;
+
+    /* Typography */
+    --font-heading: var(--font-lora, 'Lora', Georgia, serif);
+    --font-body: var(--font-source-sans-3, 'Source Sans 3', system-ui, sans-serif);
+
+    /* Geometry */
+    --radius: 8px;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: rgb(var(--color-cream));
+    color: rgb(var(--color-ink));
+    font-family: var(--font-body);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button {
+    cursor: pointer;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
