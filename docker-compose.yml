@@ -7,7 +7,8 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - apps/web/.env.local
+      - path: apps/web/.env.local
+        required: false          # copy from .env.example if missing
     environment:
       - NEXT_PUBLIC_APP_URL=http://localhost:3000
     volumes:
@@ -28,7 +29,8 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - apps/agent/.env
+      - path: apps/agent/.env
+        required: false          # copy from .env.example if missing
     volumes:
       - ./apps/agent/app:/app/app
       - ./apps/agent/data:/app/data
@@ -46,7 +48,8 @@ services:
       dockerfile: Dockerfile
       target: runner
     env_file:
-      - apps/agent/.env
+      - path: apps/agent/.env
+        required: false          # copy from .env.example if missing
     volumes:
       - ./apps/agent/app:/app/app
     command: python -m app.agent.worker start
