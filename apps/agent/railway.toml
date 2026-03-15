@@ -1,11 +1,9 @@
 [build]
 builder = "dockerfile"
-# Railway Root Directory must be set to "apps/agent"
 dockerfilePath = "Dockerfile"
+# In Railway dashboard: set Root Directory to "apps/agent"
 
 [deploy]
-# LiveKit worker — long-running process, no HTTP server
 startCommand = "python -m src.agent.worker start"
-# No health check — worker has no HTTP endpoint
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
