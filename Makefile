@@ -33,7 +33,7 @@ setup: ## First-time setup: generate lock files and copy env templates
 	fi
 
 	@if [ ! -f apps/web/.env.local ]; then \
-		printf 'NEXT_PUBLIC_APP_URL=http://localhost:3000\nNEXT_PUBLIC_APP_NAME=VoiceCraft\n' > apps/web/.env.local; \
+		printf 'NEXT_PUBLIC_APP_URL=http://localhost:3000\nNEXT_PUBLIC_APP_NAME=VoiceCraft\nDATABASE_URL=postgresql://voicecraft:voicecraft@localhost:5432/voicecraft\n' > apps/web/.env.local; \
 		echo "  -> Created apps/web/.env.local"; \
 	else \
 		echo "  + apps/web/.env.local exists"; \
@@ -50,6 +50,23 @@ dev: setup ## Start all services (runs setup first)
 dev-detach: setup ## Start all services in background
 	docker compose up --build -d
 
+# ── database ──────────────────────────────────────────────────────────────────
+.PHONY: db-migrate
+db-migrate: ## Run Prisma migrations
+	cd packages/db && pnpm db:migrate
+
+.PHONY: db-seed
+db-seed: ## Seed the database with demo data
+	cd packages/db && pnpm db:seed
+
+.PHONY: db-studio
+db-studio: ## Open Prisma Studio
+	cd packages/db && pnpm db:studio
+
+.PHONY: db-generate
+db-generate: ## Generate Prisma client
+	cd packages/db && pnpm db:generate
+
 # ── logs ──────────────────────────────────────────────────────────────────────
 .PHONY: logs
 logs: ## Follow logs for all services
@@ -58,10 +75,6 @@ logs: ## Follow logs for all services
 .PHONY: logs-web
 logs-web: ## Follow web service logs
 	docker compose logs -f web
-
-.PHONY: logs-api
-logs-api: ## Follow api service logs
-	docker compose logs -f api
 
 .PHONY: logs-agent
 logs-agent: ## Follow agent worker logs

@@ -2,21 +2,24 @@
 
 ## Project Overview
 
-VoiceCraft is a Next.js 16 application built with the App Router, TypeScript, and Tailwind CSS. The design system mirrors the HelpNest editorial theme: warm cream backgrounds, serif headings, and a clean sans-serif body.
+VoiceCraft is a voice AI platform for SMBs (starting with dental clinics). Users chat with an AI to describe their business, an agent config is generated, and a LiveKit voice agent handles real phone calls. Built with Next.js 16 (App Router), TypeScript, Tailwind CSS, and the HelpNest editorial design system.
 
 ---
 
 ## Tech Stack
 
-| Layer       | Choice                              |
-|-------------|-------------------------------------|
-| Framework   | Next.js 16 (App Router)             |
-| Language    | TypeScript (strict mode)            |
-| Styling     | Tailwind CSS v3 + CSS variables     |
-| Fonts       | Lora (serif) + Source Sans 3 (sans) |
-| Toasts      | Sonner                              |
-| Auth        | NextAuth v5 (Auth.js)               |
-| Runtime     | Node.js 20+                         |
+| Layer         | Choice                                  |
+|---------------|------------------------------------------|
+| Framework     | Next.js 16 (App Router)                  |
+| Language      | TypeScript (strict mode)                 |
+| Styling       | Tailwind CSS v3 + CSS variables          |
+| Fonts         | Lora (serif) + Source Sans 3 (sans)      |
+| Database      | PostgreSQL + Prisma (`@voicecraft/db`)   |
+| Auth          | NextAuth v5 (Auth.js)                    |
+| Builder LLM   | Claude Sonnet (`@anthropic-ai/sdk`)     |
+| Voice Agent   | LiveKit (Deepgram STT + Gemini LLM + ElevenLabs TTS) |
+| Toasts        | Sonner                                   |
+| Runtime       | Node.js 20+                             |
 
 ---
 
@@ -25,10 +28,13 @@ VoiceCraft is a Next.js 16 application built with the App Router, TypeScript, an
 ```
 voicecraft/
 ├── apps/
-│   ├── web/          # Next.js 16 — frontend + REST API
+│   ├── web/          # Next.js 16 — frontend + REST API + builder
 │   └── agent/        # Python — LiveKit voice agent worker
 ├── packages/
-│   └── config/       # Shared Tailwind, TypeScript, ESLint configs
+│   ├── config/       # Shared Tailwind, TypeScript, ESLint configs
+│   └── db/           # Prisma schema + client (@voicecraft/db)
+├── docker-compose.yml
+├── Makefile
 ├── package.json      # Monorepo root
 └── pnpm-workspace.yaml
 ```
@@ -102,24 +108,62 @@ Strict TypeScript is enabled. Do not use `any` — use `unknown` and narrow type
 
 ---
 
+## Database
+
+PostgreSQL via Prisma, shared as `@voicecraft/db`.
+
+| Concern | Location |
+|---|---|
+| Schema | `packages/db/prisma/schema.prisma` |
+| Client singleton | `packages/db/src/index.ts` |
+| Seed script | `packages/db/prisma/seed.ts` |
+
+**Models:** User, Agent, Call, Appointment, BuilderConversation, Integration
+
+**Usage:** `import { prisma } from '@voicecraft/db'`
+
+**After schema changes:** Run `make db-generate` (or `cd packages/db && npx prisma generate`).
+
+---
+
 ## Authentication
 
-NextAuth v5 (Auth.js) with a Credentials provider and JWT sessions.
+NextAuth v5 (Auth.js) with Credentials provider, JWT sessions, DB-backed user lookup.
 
 | Concern | Location | Notes |
 |---|---|---|
-| Config | `src/auth.ts` | Credentials provider with JWT sessions |
+| Config | `src/auth.ts` | Credentials provider, Prisma user lookup |
 | Route protection | `src/middleware.ts` | Guards `/dashboard/*` |
-| Login page | `src/app/login/` | Server action → redirects to `/dashboard` on success |
+| Login page | `src/app/login/` | Server action → redirects to `/dashboard` |
 | Components | `src/components/auth/` | `LoginForm`, `SignOutButton` |
+| Session provider | `src/components/providers/SessionProvider.tsx` | Wraps app in root layout |
 
 **Reading the session:**
 - Server Components: `import { auth } from '@/auth'` then `const session = await auth()`
 - Client Components: `useSession()` from `next-auth/react`
 
-**Demo credentials:** `admin@voicecraft.dev` / `password123`
+**Demo credentials:** `admin@voicecraft.dev` / `password123` (seeded via `make db-seed`)
 
-**Adding OAuth providers (Google, GitHub, etc.):** add them to the `providers` array in `src/auth.ts`. See the [Auth.js provider docs](https://authjs.dev/reference/core/providers).
+---
+
+## API Routes
+
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/agents` | GET, POST | List/create agents |
+| `/api/agents/[id]` | GET, PUT, DELETE | Agent CRUD |
+| `/api/agents/[id]/deploy` | POST | Deploy agent (set ACTIVE) |
+| `/api/builder/message` | POST | Chat with Claude Sonnet builder |
+| `/api/builder/generate` | POST | Generate agent config from conversation |
+| `/api/calls` | GET, POST | List/log calls |
+| `/api/webhooks/availability` | POST | Check appointment slots (Google Cal or mock) |
+| `/api/webhooks/book` | POST | Book appointment |
+| `/api/webhooks/send-sms` | POST | Send SMS (Twilio or mock) |
+| `/api/livekit/token` | POST | Generate LiveKit room token |
+| `/api/integrations/google` | GET | Google Calendar OAuth flow |
+| `/api/integrations/google/callback` | GET | OAuth callback |
+
+Session-authenticated routes use `auth()`. Webhook routes use `x-api-key` header with `VOICECRAFT_API_KEY`.
 
 ---
 
@@ -127,17 +171,23 @@ NextAuth v5 (Auth.js) with a Credentials provider and JWT sessions.
 
 ```bash
 # From monorepo root
-pnpm dev            # Start apps/web dev server
+make dev            # Start all services (Docker: Postgres + web + agent)
+pnpm dev            # Start web only (local, needs local Postgres)
 pnpm build          # Build apps/web
 pnpm lint           # Lint all workspaces
 pnpm type-check     # Type-check all workspaces
+
+# Database
+make db-migrate     # Run Prisma migrations
+make db-seed        # Seed demo user
+make db-studio      # Open Prisma Studio
+make db-generate    # Generate Prisma client
 
 # Target a specific workspace
 pnpm --filter @voicecraft/web <script>
 
 # Python agent (from apps/agent/)
 uv sync             # Install Python dependencies
-uv run uvicorn src.api.main:app --reload --port 8000
 uv run python -m src.agent.worker start
 uv run pytest tests/ -v
 ```
@@ -146,12 +196,11 @@ uv run pytest tests/ -v
 
 ## Environment Variables
 
-Stored in `.env.local` (not committed). Prefix with `NEXT_PUBLIC_` for client-side access.
+Stored in `.env.local` (web) and `.env` (agent). Not committed. See `.env.example` files for templates.
 
-```env
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_APP_NAME=VoiceCraft
-```
+**Required (web):** `DATABASE_URL`, `AUTH_SECRET`
+**Optional (web):** `ANTHROPIC_API_KEY`, `LIVEKIT_*`, `VOICECRAFT_API_KEY`, `GOOGLE_CLIENT_*`, `TWILIO_*`
+**Required (agent):** `LIVEKIT_*`, `DEEPGRAM_API_KEY`, `GOOGLE_API_KEY`
 
 ---
 
@@ -163,12 +212,15 @@ NEXT_PUBLIC_APP_NAME=VoiceCraft
 
 ## Adding New Components
 
-Place shared components in `src/components/`. Group by domain when the folder grows:
+Place shared components in `src/components/`. Group by domain:
 ```
 src/components/
   ui/          # Pure presentational atoms (Button, Input, Badge…)
-  layout/      # Header, Sidebar, Footer
-  [feature]/   # Feature-specific components
+  layout/      # Sidebar
+  auth/        # LoginForm, SignOutButton
+  builder/     # BuilderChat, ChatMessage, ConfigPreview
+  agents/      # TestCallClient
+  providers/   # SessionProvider
 ```
 
 ---

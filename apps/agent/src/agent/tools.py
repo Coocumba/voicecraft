@@ -1,0 +1,216 @@
+"""Function tools that call the Next.js API on behalf of the voice agent.
+
+All tools are defined as standalone async functions decorated with
+@function_tool so they can be passed to Agent(tools=[...]) without coupling
+them to a specific agent class. Each tool:
+
+  - Uses a single shared httpx.AsyncClient (created per-call; connection
+    pooling is handled by httpx internally for short-lived calls).
+  - Passes x-api-key for authentication.
+  - Returns a plain string that the LLM can incorporate into its spoken reply.
+  - Never raises — errors are caught and returned as user-friendly messages so
+    the agent can relay them gracefully to the caller.
+"""
+
+import os
+from datetime import datetime
+from typing import Any
+
+import httpx
+import structlog
+from livekit.agents import function_tool, RunContext
+
+logger = structlog.get_logger(__name__)
+
+_WEB_URL = os.environ.get("VOICECRAFT_WEB_URL", "http://localhost:3000").rstrip("/")
+_API_KEY = os.environ.get("VOICECRAFT_API_KEY", "")
+
+# Webhook calls should resolve quickly; 8 s read timeout is generous but
+# bounded so a hung Next.js handler never blocks the audio pipeline for long.
+_TIMEOUT = httpx.Timeout(connect=3.0, read=8.0, write=5.0, pool=2.0)
+
+_COMMON_HEADERS = {
+    "x-api-key": _API_KEY,
+    "Content-Type": "application/json",
+}
+
+
+def _get_agent_id(context: RunContext) -> str:  # type: ignore[type-arg]
+    """Extract agent ID from RunContext userdata, falling back to empty string."""
+    userdata = getattr(context, "userdata", None)
+    if isinstance(userdata, dict):
+        return str(userdata.get("agent_id", ""))
+    return ""
+
+
+def _combine_datetime(date_str: str, time_str: str) -> str:
+    """Combine separate date and time strings into an ISO 8601 datetime.
+
+    Tries common formats; falls back to concatenation if parsing fails.
+    """
+    for date_fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y"):
+        for time_fmt in ("%I:%M %p", "%I:%M%p", "%H:%M"):
+            try:
+                dt = datetime.strptime(f"{date_str} {time_str}", f"{date_fmt} {time_fmt}")
+                return dt.isoformat()
+            except ValueError:
+                continue
+    # Fallback: let the API try to parse it
+    return f"{date_str}T{time_str}"
+
+
+async def _post(path: str, payload: dict[str, Any], log_context: dict[str, Any]) -> dict[str, Any]:
+    """POST JSON to a Next.js webhook endpoint.
+
+    Returns the parsed response body on success.
+    Raises RuntimeError with a user-friendly message on failure.
+    """
+    url = f"{_WEB_URL}{path}"
+    log = logger.bind(url=url, **log_context)
+
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            response = await client.post(url, json=payload, headers=_COMMON_HEADERS)
+
+        if response.status_code not in (200, 201):
+            log.error(
+                "webhook_error",
+                status_code=response.status_code,
+                body=response.text[:256],
+            )
+            raise RuntimeError(
+                f"Request to {path} returned HTTP {response.status_code}."
+            )
+
+        data: dict[str, Any] = response.json()
+        log.info("webhook_success")
+        return data
+
+    except httpx.TimeoutException:
+        log.error("webhook_timeout")
+        raise RuntimeError("The request timed out. Please try again.")
+    except httpx.RequestError as exc:
+        log.error("webhook_request_error", error=str(exc))
+        raise RuntimeError("Could not reach the booking system. Please try again later.")
+
+
+@function_tool()
+async def check_availability(
+    context: RunContext,  # type: ignore[type-arg]
+    date: str,
+    service: str,
+) -> str:
+    """Check appointment availability for a given date and service.
+
+    Call this before attempting to book an appointment. Returns a plain-text
+    description of available time slots, or a message explaining unavailability.
+
+    Args:
+        date: The requested date in YYYY-MM-DD format or a natural description
+              such as "next Tuesday". Pass exactly what the patient said.
+        service: The dental service requested, e.g. "cleaning", "filling",
+                 "extraction", "crown", or "general checkup".
+    """
+    agent_id = _get_agent_id(context)
+    log_ctx = {"date": date, "service": service, "agent_id": agent_id}
+    try:
+        data = await _post(
+            "/api/webhooks/availability",
+            {"agentId": agent_id, "date": date, "service": service},
+            log_ctx,
+        )
+        # The Next.js handler should return {"slots": [...], "message": "..."}
+        # We return whichever field is most useful to the LLM.
+        if "message" in data:
+            return str(data["message"])
+        if "slots" in data:
+            slots = data["slots"]
+            if not slots:
+                return f"There are no available slots for {service} on {date}."
+            slot_list = ", ".join(str(s) for s in slots)
+            return f"Available slots for {service} on {date}: {slot_list}."
+        return f"Availability check succeeded but returned an unexpected response: {data}"
+    except RuntimeError as exc:
+        return (
+            f"I was unable to check availability right now. {exc} "
+            "Would you like to try a different date, or shall I take your number so we can call you back?"
+        )
+
+
+@function_tool()
+async def book_appointment(
+    context: RunContext,  # type: ignore[type-arg]
+    patient_name: str,
+    phone: str,
+    date: str,
+    time: str,
+    service: str,
+) -> str:
+    """Book a dental appointment for the patient.
+
+    Only call this after check_availability has confirmed the slot is open
+    AND the patient has explicitly confirmed they want to proceed with the booking.
+
+    Args:
+        patient_name: Full name of the patient as they stated it.
+        phone: Patient's phone number for confirmation, e.g. "555-867-5309".
+        date: Appointment date in YYYY-MM-DD format or natural description.
+        time: Appointment time, e.g. "2:30 PM" or "14:30".
+        service: The service being booked, e.g. "cleaning", "filling".
+    """
+    agent_id = _get_agent_id(context)
+    # Combine date + time into ISO 8601 for the API
+    scheduled_at = _combine_datetime(date, time)
+    log_ctx = {"patient_name": patient_name, "date": date, "time": time, "service": service}
+    try:
+        data = await _post(
+            "/api/webhooks/book",
+            {
+                "agentId": agent_id,
+                "patientName": patient_name,
+                "patientPhone": phone,
+                "scheduledAt": scheduled_at,
+                "service": service,
+            },
+            log_ctx,
+        )
+        appointment = data.get("appointment", {})
+        confirmation_id = appointment.get("id") or "N/A"
+        return (
+            f"Your appointment for {service} on {date} at {time} has been booked. "
+            f"Your confirmation number is {confirmation_id}. "
+            "We will send a reminder before your visit."
+        )
+    except RuntimeError as exc:
+        return (
+            f"I was unable to complete the booking. {exc} "
+            "Would you like me to try again, or shall I take your details so the team can follow up?"
+        )
+
+
+@function_tool()
+async def send_sms(
+    context: RunContext,  # type: ignore[type-arg]
+    to: str,
+    message: str,
+) -> str:
+    """Send an SMS confirmation or reminder to the patient's phone number.
+
+    Use this after a successful booking to send the patient their confirmation
+    details. Always confirm with the patient before sending.
+
+    Args:
+        to: Recipient phone number, e.g. "555-867-5309" or "+15558675309".
+        message: The SMS body to send. Keep it concise — under 160 characters
+                 is ideal for a single-segment SMS.
+    """
+    log_ctx = {"to_redacted": to[-4:] if len(to) >= 4 else "****"}
+    try:
+        await _post(
+            "/api/webhooks/send-sms",
+            {"to": to, "message": message},
+            log_ctx,
+        )
+        return "The confirmation SMS has been sent to your phone."
+    except RuntimeError as exc:
+        return f"I was unable to send the SMS. {exc}"

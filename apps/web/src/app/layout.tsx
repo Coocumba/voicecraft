@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { Lora, Source_Sans_3 } from 'next/font/google'
+import { Toaster } from 'sonner'
+import { SessionProvider } from '@/components/providers/SessionProvider'
 import './globals.css'
 
 const lora = Lora({
@@ -34,7 +36,10 @@ export default function RootLayout({
         className={`${lora.variable} ${sourceSans3.variable} font-sans bg-cream text-ink antialiased`}
         suppressHydrationWarning
       >
-        {children}
+        <SessionProvider>
+          {children}
+          <Toaster position="top-right" richColors />
+        </SessionProvider>
       </body>
     </html>
   )

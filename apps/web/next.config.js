@@ -3,6 +3,7 @@ const path = require('path')
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  transpilePackages: ['@voicecraft/db'],
   // Monorepo: tell Turbopack the workspace root is two levels up
   turbopack: {
     root: path.join(__dirname, '../..'),
@@ -18,7 +19,7 @@ const nextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), geolocation=()',
+            value: 'camera=(), microphone=(self), geolocation=()',
           },
           {
             key: 'Strict-Transport-Security',

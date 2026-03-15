@@ -5,10 +5,13 @@ description = "VoiceCraft LiveKit voice agent worker"
 requires-python = ">=3.11"
 dependencies = [
     "livekit-agents>=1.4.0",
+    "livekit-plugins-deepgram>=1.0.0",
+    "livekit-plugins-google>=1.0.0",
+    "livekit-plugins-elevenlabs>=1.0.0",
+    "livekit-plugins-openai>=1.0.0",
     "deepgram-sdk>=3.0.0",
     "google-generativeai>=0.8.0",
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.32.0",
+    "httpx>=0.28.0",
     "structlog>=24.4.0",
 ]
 

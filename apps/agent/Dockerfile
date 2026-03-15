@@ -2,7 +2,15 @@ FROM python:3.11-slim AS base
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# ── builder ───────────────────────────────────────────────────────────────────
+# LiveKit's native FFI library requires GLib and GObject
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libglib2.0-0 \
+        libgobject-2.0-0 \
+        libgstreamer1.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# -- builder -------------------------------------------------------------------
 FROM base AS builder
 WORKDIR /app
 
@@ -22,20 +30,14 @@ COPY . .
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
-# ── runner ────────────────────────────────────────────────────────────────────
+# -- runner --------------------------------------------------------------------
 FROM base AS runner
 WORKDIR /app
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/src ./src
-# scripts/ is optional — only copy if it has content
-RUN --mount=from=builder,source=/app,target=/builder \
-    if [ -d /builder/scripts ] && [ "$(ls -A /builder/scripts 2>/dev/null)" ]; then \
-        cp -r /builder/scripts ./scripts; \
-    fi
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-EXPOSE 8000
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "src.agent.worker", "start"]

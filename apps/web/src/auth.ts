@@ -1,6 +1,7 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
+import { prisma } from "@voicecraft/db"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -12,29 +13,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
 
-        // TODO: Replace with real database lookup
-        // For now, use a demo user for development
-        const demoUser = {
-          id: "1",
-          email: "admin@voicecraft.dev",
-          name: "Admin",
-          // password: "password123" hashed with bcrypt
-          passwordHash: await bcrypt.hash("password123", 10),
-        }
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email as string },
+        })
 
-        if (credentials.email !== demoUser.email) return null
+        if (!user) return null
 
         const isValid = await bcrypt.compare(
           credentials.password as string,
-          demoUser.passwordHash
+          user.passwordHash
         )
 
         if (!isValid) return null
 
         return {
-          id: demoUser.id,
-          email: demoUser.email,
-          name: demoUser.name,
+          id: user.id,
+          email: user.email,
+          name: user.name,
         }
       },
     }),

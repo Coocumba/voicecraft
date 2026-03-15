@@ -4,10 +4,8 @@ builder = "dockerfile"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-# Dockerfile CMD runs uvicorn (API server)
-# For the LiveKit worker, create a separate Railway service with:
-#   startCommand = "python -m src.agent.worker start"
-healthcheckPath = "/health"
-healthcheckTimeout = 60
+# LiveKit worker — long-running process, no HTTP server
+startCommand = "python -m src.agent.worker start"
+# No health check — worker has no HTTP endpoint
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10

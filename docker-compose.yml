@@ -1,4 +1,20 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: voicecraft
+      POSTGRES_PASSWORD: voicecraft
+      POSTGRES_DB: voicecraft
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voicecraft"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   web:
     build:
       context: .
@@ -8,31 +24,24 @@ services:
       - "3000:3000"
     env_file:
       - path: apps/web/.env.local
-        required: false          # copy from .env.example if missing
+        required: false
     environment:
       - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - DATABASE_URL=postgresql://voicecraft:voicecraft@postgres:5432/voicecraft
     volumes:
       - ./apps/web/src:/app/apps/web/src
       - ./apps/web/public:/app/apps/web/public
-  api:
-    build:
-      context: apps/agent
-      dockerfile: Dockerfile
-      target: runner
-    ports:
-      - "8000:8000"
-    env_file:
-      - path: apps/agent/.env
-        required: false          # copy from .env.example if missing
-    volumes:
-      - ./apps/agent/src:/app/src
-    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+      - ./packages/db/src:/app/packages/db/src
+      - ./packages/db/prisma:/app/packages/db/prisma
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/auth/session || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 10s
+      retries: 10
+      start_period: 30s
 
   agent:
     build:
@@ -41,11 +50,16 @@ services:
       target: runner
     env_file:
       - path: apps/agent/.env
-        required: false          # copy from .env.example if missing
+        required: false
+    environment:
+      - VOICECRAFT_WEB_URL=http://web:3000
     volumes:
       - ./apps/agent/src:/app/src
     command: python -m src.agent.worker start
     depends_on:
-      api:
+      web:
         condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  pgdata:

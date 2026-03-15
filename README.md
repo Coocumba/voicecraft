@@ -1,21 +1,104 @@
 # VoiceCraft
 
-AI-powered voice crafting — Next.js 16 + Python LiveKit agent, in a pnpm monorepo.
+VoiceCraft is a voice AI platform for small and medium businesses, starting with dental clinics. It lets you build, deploy, and monitor AI voice agents that handle appointment booking, availability checks, and SMS confirmations — all from a web dashboard.
+
+The monorepo contains a Next.js web app (frontend + REST API + agent builder) and a Python LiveKit voice agent worker.
 
 ---
 
 ## Tech Stack
 
-| Layer           | Choice                          |
-|-----------------|---------------------------------|
-| Framework       | Next.js 16 (App Router)         |
-| UI              | React 19                        |
-| Language        | TypeScript (strict mode)        |
-| Styling         | Tailwind CSS v3 + CSS variables |
-| Toasts          | Sonner                          |
-| Package manager | pnpm 10 (workspaces)            |
-| Voice agent     | Python + LiveKit (managed with uv) |
-| Auth            | NextAuth v5 (Auth.js)              | JWT sessions, Credentials provider |
+| Layer           | Choice                                          |
+|-----------------|-------------------------------------------------|
+| Framework       | Next.js 16 (App Router)                         |
+| Language        | TypeScript (strict mode)                        |
+| Styling         | Tailwind CSS v3 + CSS variables                 |
+| Database        | PostgreSQL + Prisma                             |
+| Auth            | NextAuth v5 (Auth.js) — JWT sessions            |
+| Voice agent     | LiveKit + Deepgram Nova-3 + Gemini Flash + ElevenLabs |
+| Builder LLM     | Claude Sonnet (Anthropic SDK)                   |
+| Package manager | pnpm 10 (workspaces)                            |
+| Python runtime  | uv                                              |
+
+---
+
+## Project Structure
+
+```
+voicecraft/
+├── apps/
+│   ├── web/                        # Next.js 16 — frontend + REST API + agent builder
+│   │   └── src/
+│   │       ├── auth.ts             # NextAuth configuration
+│   │       ├── middleware.ts       # Route protection (/dashboard/*)
+│   │       ├── app/
+│   │       │   ├── login/          # Login page
+│   │       │   ├── dashboard/      # Protected dashboard (agents, calls, settings)
+│   │       │   └── api/            # REST API routes
+│   │       └── components/         # UI components
+│   └── agent/                      # Python — LiveKit voice agent worker
+├── packages/
+│   ├── config/                     # Shared Tailwind, TypeScript, ESLint configs
+│   └── db/                         # Prisma schema + client (@voicecraft/db)
+├── docker-compose.yml
+├── Makefile
+└── pnpm-workspace.yaml
+```
+
+---
+
+## Workspaces
+
+| Workspace            | Description                                             |
+|----------------------|---------------------------------------------------------|
+| `@voicecraft/web`    | Next.js app — dashboard UI, REST API, agent builder     |
+| `@voicecraft/db`     | Prisma schema + generated client, shared across apps    |
+| `@voicecraft/config` | Shared configs — Tailwind, TypeScript, ESLint           |
+| `apps/agent`         | Python LiveKit voice agent worker, managed with uv      |
+
+---
+
+## What's Built
+
+### Database
+
+Postgres via Prisma with the following models: `User`, `Agent`, `Call`, `Appointment`, `BuilderConversation`, `Integration`.
+
+### API Routes
+
+| Route | Purpose |
+|---|---|
+| `POST /api/agents`, `GET /api/agents`, `PATCH /api/agents/[id]`, `DELETE /api/agents/[id]` | Agent CRUD |
+| `POST /api/builder/message`, `POST /api/builder/generate` | Chat with Claude to configure agents |
+| `POST /api/calls`, `GET /api/calls` | Call logging |
+| `POST /api/webhooks/availability` | Check calendar availability (called by voice agent) |
+| `POST /api/webhooks/book` | Book appointments (called by voice agent) |
+| `POST /api/webhooks/send-sms` | Send SMS confirmations via Twilio |
+| `GET /api/livekit/token` | Generate LiveKit room tokens |
+| `GET /api/integrations/google` | Google Calendar OAuth callback |
+
+### Dashboard
+
+- Overview with call and agent stats
+- Agent list with live status badges
+- Agent builder — chat with Claude to configure an agent's behavior
+- Agent detail view with full call history
+- Test call page
+- Settings page
+
+### Voice Agent
+
+The Python worker runs as a LiveKit `VoicePipelineAgent` with:
+
+- **STT** — Deepgram Nova-3
+- **LLM** — Google Gemini Flash
+- **TTS** — ElevenLabs (with Google TTS fallback)
+- **Tools** — function calls that hit the Next.js webhook API to check availability, book appointments, and send SMS
+
+### Integrations
+
+- Google Calendar (read availability, create bookings)
+- Twilio SMS (send confirmation messages, with mock fallback for local development)
 
 ---
 
@@ -25,213 +108,156 @@ AI-powered voice crafting — Next.js 16 + Python LiveKit agent, in a pnpm monor
 
 - Node.js 20 or later
 - pnpm 10 or later (`npm install -g pnpm`)
-- Python 3.11 or later + [uv](https://docs.astral.sh/uv/) (for the agent)
+- Docker and Docker Compose (for the full local stack)
+- Python 3.11 or later + [uv](https://docs.astral.sh/uv/) (for running the agent directly)
 
-### Setup
+### First-time setup
 
 ```bash
 # Clone the repository
 git clone https://github.com/your-org/voicecraft.git
 cd voicecraft
 
-# Install all workspace dependencies (run from the monorepo root)
+# First-time setup: generates lock files, copies env templates
+make setup
+
+# Start all services (web, api, agent, Postgres)
+make dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+**Demo credentials:** `admin@voicecraft.dev` / `password123`
+
+### Running without Docker
+
+```bash
+# Install JS dependencies
 pnpm install
 
-# Copy environment variables for the web app
-# .env.local is gitignored — never committed. Copy from the checked-in
-# template and fill in your own values before starting the server.
+# Copy and fill in environment variables for the web app
 cp apps/web/.env.example apps/web/.env.local
 
-# Start the web development server
+# Run database migrations and seed the demo user
+make db-migrate
+make db-seed
+
+# Start the web dev server
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the app.
-
-To set up the Python voice agent:
+For the Python agent:
 
 ```bash
 cd apps/agent
+cp .env.example .env   # fill in your keys
 uv sync
+uv run python -m src.agent.worker start
 ```
-
----
-
-## Project Structure
-
-```
-voicecraft/
-├── apps/
-│   ├── web/                        # Next.js 16 — frontend + REST API
-│   │   └── src/
-│   │       ├── auth.ts             # NextAuth configuration
-│   │       ├── middleware.ts       # Route protection
-│   │       ├── app/
-│   │       │   ├── login/          # Login page
-│   │       │   └── dashboard/      # Protected dashboard
-│   │       └── components/
-│   │           └── auth/           # LoginForm, SignOutButton
-│   └── agent/                      # Python — LiveKit voice agent worker
-├── packages/
-│   └── config/                     # Shared Tailwind, TypeScript, ESLint configs
-├── package.json                    # Monorepo root
-└── pnpm-workspace.yaml
-```
-
----
-
-## Workspaces
-
-| Workspace            | Description                                          |
-|----------------------|------------------------------------------------------|
-| `@voicecraft/web`    | Next.js app — frontend UI and API routes             |
-| `@voicecraft/config` | Shared configs — Tailwind, TypeScript, ESLint        |
-| `apps/agent`         | Python LiveKit voice agent, managed with uv          |
-
----
-
-## Design System
-
-### Color Tokens
-
-All colors are defined as RGB triplets in `globals.css`, which allows Tailwind to apply alpha modifiers (`/50`, `/75`, etc.).
-
-| Token     | CSS Variable         | Default (RGB)         | Usage                   |
-|-----------|----------------------|-----------------------|-------------------------|
-| `cream`   | `--color-cream`      | `247 244 238`         | Page background         |
-| `ink`     | `--color-ink`        | `26 24 20`            | Primary text            |
-| `muted`   | `--color-muted`      | `122 117 108`         | Secondary / placeholder |
-| `border`  | `--color-border`     | `226 221 213`         | Borders and dividers    |
-| `accent`  | `--color-accent`     | `109 70 220` (violet) | CTAs, links, highlights |
-| `success` | `--color-success`    | `45 106 79`           | Success states          |
-| `white`   | `--color-white`      | `255 255 255`         | High-contrast surfaces  |
-
-Use the tokens via Tailwind utilities: `bg-cream`, `text-ink`, `text-muted`, `border-border`, `text-accent`, and so on.
-
-### Typography
-
-| Role     | Tailwind class | Font          | CSS variable    |
-|----------|----------------|---------------|-----------------|
-| Headings | `font-serif`   | Lora          | `--font-heading` |
-| Body     | `font-sans`    | Source Sans 3 | `--font-body`   |
-
-Body defaults (`font-sans bg-cream text-ink antialiased`) are applied globally on the `<body>` element in `layout.tsx`.
-
-### Border Radius
-
-Base radius is controlled by `--radius: 8px`. Use the standard Tailwind scale: `rounded-sm`, `rounded` / `rounded-md`, `rounded-lg`, `rounded-xl`, `rounded-2xl`.
 
 ---
 
 ## Environment Variables
 
-Copy `.env.example` to `.env.local` before running the app. The `.env.local` file is not committed to version control.
+### apps/web (.env.local)
 
-| Variable               | Description                              |
-|------------------------|------------------------------------------|
-| `NEXT_PUBLIC_APP_URL`  | Base URL of the app (e.g. `http://localhost:3000`) |
-| `NEXT_PUBLIC_APP_NAME` | Display name of the app (e.g. `VoiceCraft`)        |
-| `AUTH_SECRET`          | Required. Secret key for signing JWT tokens. Generate with `openssl rand -base64 32` |
-| `AUTH_TRUST_HOST`      | Set to `true` for non-Vercel deployments (Railway, Docker) |
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `AUTH_SECRET` | NextAuth secret — generate with `openssl rand -base64 32` |
+| `ANTHROPIC_API_KEY` | Claude Sonnet for the agent builder |
+| `LIVEKIT_URL` | LiveKit server URL |
+| `LIVEKIT_API_KEY` | LiveKit API key |
+| `LIVEKIT_API_SECRET` | LiveKit API secret |
+| `VOICECRAFT_API_KEY` | Shared secret for agent-to-web authentication |
+| `GOOGLE_CLIENT_ID` | Google Calendar OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Google Calendar OAuth client secret |
+| `TWILIO_ACCOUNT_SID` | Twilio account SID |
+| `TWILIO_AUTH_TOKEN` | Twilio auth token |
+| `TWILIO_FROM_NUMBER` | Twilio sender phone number |
+| `NEXT_PUBLIC_APP_URL` | Base URL (e.g. `http://localhost:3000`) |
+| `NEXT_PUBLIC_APP_NAME` | Display name (e.g. `VoiceCraft`) |
 
-Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser.
+### apps/agent (.env)
+
+| Variable | Description |
+|---|---|
+| `VOICECRAFT_WEB_URL` | Next.js API base URL |
+| `VOICECRAFT_API_KEY` | Shared secret (must match the web app value) |
+| `LIVEKIT_URL` | LiveKit server URL |
+| `LIVEKIT_API_KEY` | LiveKit API key |
+| `LIVEKIT_API_SECRET` | LiveKit API secret |
+| `DEEPGRAM_API_KEY` | Deepgram STT key |
+| `GOOGLE_API_KEY` | Gemini LLM key |
+| `ELEVENLABS_API_KEY` | ElevenLabs TTS key |
 
 ---
 
-## Scripts
+## Commands
 
-### Root (runs across all workspaces)
+### Make (full stack via Docker)
 
-| Command            | Description                                    |
-|--------------------|------------------------------------------------|
-| `pnpm dev`         | Start the `apps/web` development server (Turbopack) |
-| `pnpm build`       | Build `apps/web` for production                |
-| `pnpm lint`        | Lint all workspaces                            |
-| `pnpm type-check`  | Type-check all workspaces                      |
+| Command | Description |
+|---|---|
+| `make setup` | First-time setup |
+| `make dev` | Start all services |
+| `make down` | Stop all services |
+| `make reset` | Stop and wipe volumes |
+| `make rebuild` | Force rebuild after dependency changes |
+| `make logs` | Follow all service logs |
+| `make db-migrate` | Run Prisma migrations |
+| `make db-seed` | Seed the demo user |
+| `make db-studio` | Open Prisma Studio |
+| `make db-generate` | Regenerate Prisma client |
+| `make lock` | Regenerate uv.lock (run after changing pyproject.toml) |
+| `make help` | Show all available commands |
 
-### Target a specific workspace
+### pnpm (web app)
+
+| Command | Description |
+|---|---|
+| `pnpm dev` | Start the web dev server |
+| `pnpm build` | Production build |
+| `pnpm type-check` | TypeScript check across all workspaces |
+| `pnpm lint` | Lint all workspaces |
+
+Target a specific workspace:
 
 ```bash
 pnpm --filter @voicecraft/web <script>
 ```
 
-### Python agent (run from `apps/agent/`)
-
-| Command                                                | Description                        |
-|--------------------------------------------------------|------------------------------------|
-| `uv sync`                                              | Install Python dependencies        |
-| `uv run uvicorn src.api.main:app --reload --port 8000` | Start the agent API server         |
-| `uv run python -m src.agent.worker start`              | Start the LiveKit voice agent      |
-| `uv run pytest tests/ -v`                              | Run the Python test suite          |
-
----
-
-## Monorepo
-
-The monorepo is set up and ready to extend:
-
-- Workspaces are declared in `pnpm-workspace.yaml` at the repo root.
-- Shared configs (Tailwind, TypeScript, ESLint) live in `packages/config` as `@voicecraft/config`.
-- Add new applications under `apps/` and new shared packages under `packages/`.
-- Run `pnpm install` from the repo root to install all workspace dependencies at once.
-
----
-
-## Local Development (Docker)
-
-Running the full stack locally requires only Docker — no Node.js or Python installation needed on the host.
-
-### First-time setup
-
-```bash
-# First time (generates lock files + copies env templates)
-make setup
-
-# Start everything
-make dev
-
-# Or run in background
-make dev-detach
-```
-
-### Common commands
+### Python agent (from apps/agent/)
 
 | Command | Description |
 |---|---|
-| `make dev` | Setup + start all services |
-| `make down` | Stop all services |
-| `make reset` | Stop and wipe volumes |
-| `make rebuild` | Force rebuild after dep changes |
-| `make logs` | Follow all logs |
-| `make lock` | Regenerate uv.lock |
-| `make help` | Show all commands |
+| `uv sync` | Install Python dependencies |
+| `uv run python -m src.agent.worker start` | Start the LiveKit voice agent |
+| `uv run uvicorn src.api.main:app --reload --port 8000` | Start the agent API server |
+| `uv run pytest tests/ -v` | Run the Python test suite |
 
-> After changing `apps/agent/pyproject.toml`, run `make lock` and commit `uv.lock` to keep production builds deterministic.
+---
 
-### Services
+## Local Services
 
-| Service | Local URL | Hot reload |
+| Service | URL | Hot reload |
 |---|---|---|
-| web (Next.js) | http://localhost:3000 | Yes (src/ volume) |
-| api (FastAPI) | http://localhost:8000 | Yes (--reload) |
-| agent (LiveKit) | — background worker | Yes (volume) |
+| web (Next.js) | http://localhost:3000 | Yes (src/ volume mount) |
+| api (FastAPI) | http://localhost:8000 | Yes (--reload flag) |
+| agent (LiveKit worker) | background process | Yes (volume mount) |
 
-The `web` service uses the `dev` build target from `apps/web/Dockerfile`, which runs `pnpm dev` with Turbopack. Source changes under `apps/web/src/` and `apps/web/public/` are reflected immediately via volume mounts. Dependencies are baked into the Docker image at build time — run `docker compose up --build` after changing `package.json`.
-
-The `api` and `agent` services both use the `runner` stage from `apps/agent/Dockerfile`. The compose file overrides the default `CMD` to add `--reload` (for `api`) and mounts `apps/agent/src/` so Python changes are picked up without a rebuild.
+After changing `apps/agent/pyproject.toml`, run `make lock` and commit the updated `uv.lock` to keep production builds deterministic.
 
 ---
 
 ## Deployment
 
-### Deploying to Railway
+### Railway
 
-**Prerequisites:** Railway account, repo pushed to GitHub.
-
-**Steps:**
+**Prerequisites:** Railway account, repository pushed to GitHub.
 
 1. Create a new Railway project from your GitHub repo.
-2. Add two services — both pointing to the same repo:
+2. Add two services — both pointing to the same repo.
 
 **Service: web**
 
@@ -240,11 +266,11 @@ The `api` and `agent` services both use the `runner` stage from `apps/agent/Dock
 | Root Directory | `apps/web` |
 | Config file | `apps/web/railway.toml` (auto-detected) |
 
-Required environment variables:
+Set all variables from the `apps/web` environment table above, plus:
 
 ```
 NEXT_PUBLIC_APP_URL=https://<your-railway-domain>.up.railway.app
-NEXT_PUBLIC_APP_NAME=VoiceCraft
+AUTH_TRUST_HOST=true
 ```
 
 **Service: agent**
@@ -254,8 +280,24 @@ NEXT_PUBLIC_APP_NAME=VoiceCraft
 | Root Directory | `apps/agent` |
 | Config file | `apps/agent/railway.toml` (auto-detected) |
 
-Required environment variables: copy from `apps/agent/.env.example`.
+Set all variables from the `apps/agent` environment table above.
 
-3. Railway auto-detects `railway.toml` in the service root and deploys.
+3. Railway auto-detects `railway.toml` in each service root and deploys using the Dockerfile. The web service build context is the monorepo root (required for pnpm workspace resolution).
 
-Note: `railway.toml` in each app directory tells Railway to use the Dockerfile builder. The web service build context is the monorepo root (required for pnpm workspace resolution); the agent service build context is `apps/agent/`.
+---
+
+## Design System
+
+Colors are defined as RGB triplets in `globals.css`, which lets Tailwind apply alpha modifiers (`/50`, `/75`, etc.).
+
+| Token | CSS Variable | Default (RGB) | Usage |
+|---|---|---|---|
+| `cream` | `--color-cream` | `247 244 238` | Page background |
+| `ink` | `--color-ink` | `26 24 20` | Primary text |
+| `muted` | `--color-muted` | `122 117 108` | Secondary / placeholder |
+| `border` | `--color-border` | `226 221 213` | Borders and dividers |
+| `accent` | `--color-accent` | `109 70 220` | CTAs, links, highlights |
+| `success` | `--color-success` | `45 106 79` | Success states |
+| `white` | `--color-white` | `255 255 255` | High-contrast surfaces |
+
+**Typography:** headings use `font-serif` (Lora), body uses `font-sans` (Source Sans 3). Base styles (`font-sans bg-cream text-ink antialiased`) are applied globally on `<body>`.

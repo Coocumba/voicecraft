@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String                @id @default(cuid())
+  email         String                @unique
+  name          String?
+  passwordHash  String
+  agents        Agent[]
+  conversations BuilderConversation[]
+  integrations  Integration[]
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+}
+
+model Agent {
+  id                String      @id @default(cuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id])
+  name              String
+  businessName      String
+  status            AgentStatus @default(DRAFT)
+  config            Json
+  voiceSettings     Json?
+  phoneNumber       String?
+  liveKitDispatchId String?
+  calls             Call[]
+  appointments      Appointment[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([userId])
+}
+
+model Call {
+  id           String      @id @default(cuid())
+  agentId      String
+  agent        Agent       @relation(fields: [agentId], references: [id])
+  callerNumber String?
+  duration     Int?
+  outcome      CallOutcome
+  transcript   String?     @db.Text
+  summary      String?
+  appointments Appointment[]
+  createdAt    DateTime    @default(now())
+
+  @@index([agentId])
+}
+
+model Appointment {
+  id              String            @id @default(cuid())
+  agentId         String
+  agent           Agent             @relation(fields: [agentId], references: [id])
+  callId          String?
+  call            Call?             @relation(fields: [callId], references: [id])
+  patientName     String
+  patientPhone    String?
+  scheduledAt     DateTime
+  service         String
+  status          AppointmentStatus @default(BOOKED)
+  calendarEventId String?
+  createdAt       DateTime          @default(now())
+
+  @@index([agentId])
+  @@index([callId])
+}
+
+model BuilderConversation {
+  id              String             @id @default(cuid())
+  userId          String
+  user            User               @relation(fields: [userId], references: [id])
+  messages        Json
+  generatedConfig Json?
+  status          ConversationStatus @default(IN_PROGRESS)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([userId])
+}
+
+enum AgentStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+}
+
+enum CallOutcome {
+  COMPLETED
+  MISSED
+  ESCALATED
+}
+
+enum AppointmentStatus {
+  BOOKED
+  CANCELLED
+  COMPLETED
+}
+
+enum ConversationStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Integration {
+  id           String              @id @default(cuid())
+  userId       String
+  user         User                @relation(fields: [userId], references: [id])
+  provider     IntegrationProvider
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  metadata     Json?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@unique([userId, provider])
+  @@index([userId])
+}
+
+enum IntegrationProvider {
+  GOOGLE_CALENDAR
+  TWILIO
+}
