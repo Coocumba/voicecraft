@@ -1,7 +1,7 @@
 [build]
 builder = "dockerfile"
-dockerfilePath = "Dockerfile"
-# In Railway dashboard: set Root Directory to "apps/agent"
+dockerfilePath = "apps/agent/Dockerfile"
+# Root Directory: "/" (repo root) — same as web service
 
 [deploy]
 startCommand = "python -m src.agent.worker start"

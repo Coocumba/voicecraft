@@ -19,10 +19,23 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy
 
-COPY pyproject.toml uv.lock ./
+# Support both build contexts:
+#   docker-compose: context = apps/agent (files at .)
+#   Railway:        context = repo root   (files at apps/agent/)
+COPY pyproject.tom[l] uv.loc[k] ./
+COPY apps/agent/pyproject.tom[l] apps/agent/uv.loc[k] ./apps/agent/
+RUN if [ -f apps/agent/pyproject.toml ]; then \
+      cp apps/agent/pyproject.toml apps/agent/uv.lock .; \
+    fi
+
 RUN uv sync --frozen --no-install-project --no-dev
 
-COPY . .
+COPY sr[c] ./src/
+COPY apps/agent/sr[c] ./apps/agent/src/
+RUN if [ -d apps/agent/src ]; then \
+      rm -rf src && cp -r apps/agent/src .; \
+    fi
+
 RUN uv sync --frozen --no-dev
 
 # -- runner --------------------------------------------------------------------
