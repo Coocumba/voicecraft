@@ -166,6 +166,56 @@ The monorepo is set up and ready to extend:
 
 ---
 
+## Local Development (Docker)
+
+Running the full stack locally requires only Docker — no Node.js or Python installation needed on the host.
+
+### First-time setup
+
+```bash
+# Copy env files and fill in your values
+cp apps/web/.env.local.example apps/web/.env.local   # edit as needed
+cp apps/agent/.env.example apps/agent/.env           # edit as needed
+```
+
+### Common commands
+
+```bash
+# Start all services (web + api + agent)
+docker compose up
+
+# Rebuild after dependency changes (package.json, pyproject.toml, lock files)
+docker compose up --build
+
+# Run only specific services
+docker compose up web
+docker compose up api agent
+
+# View logs
+docker compose logs -f web
+docker compose logs -f api
+
+# Stop everything
+docker compose down
+
+# Stop and remove volumes (full reset — clears node_modules and .next cache)
+docker compose down -v
+```
+
+### Services
+
+| Service | Local URL | Hot reload |
+|---|---|---|
+| web (Next.js) | http://localhost:3000 | Yes (src/ volume) |
+| api (FastAPI) | http://localhost:8000 | Yes (--reload) |
+| agent (LiveKit) | — background worker | Yes (volume) |
+
+The `web` service uses the `dev` build target from `apps/web/Dockerfile`, which runs `pnpm dev` with Turbopack. Source changes under `apps/web/src/` and `apps/web/public/` are reflected immediately via volume mounts. Named volumes (`web_node_modules`, `web_app_node_modules`, `web_next`) ensure the container's installed packages are never overwritten by the host filesystem.
+
+The `api` and `agent` services both use the `runner` stage from `apps/agent/Dockerfile`. The compose file overrides the default `CMD` to add `--reload` (for `api`) and mounts `apps/agent/app/` so Python changes are picked up without a rebuild.
+
+---
+
 ## Deployment
 
 ### Deploying to Railway
@@ -202,4 +252,4 @@ Required environment variables: copy from `apps/agent/.env.example`.
 
 3. Railway auto-detects `railway.toml` in the service root and deploys.
 
-Note: `nixpacks.toml` files in each app directory give Railway precise control over build phases — Node 20 + pnpm workspace install for the web service, Python 3.11 + uv for the agent service.
+Note: `railway.toml` in each app directory tells Railway to use the Dockerfile builder. The web service build context is the monorepo root (required for pnpm workspace resolution); the agent service build context is `apps/agent/`.

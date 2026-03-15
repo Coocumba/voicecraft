@@ -1,12 +1,8 @@
 [build]
-# nixpacks detects pyproject.toml and uv.lock automatically.
-# Build behaviour is further controlled by nixpacks.toml in this directory.
-builder = "nixpacks"
+builder = "dockerfile"
+dockerfilePath = "apps/agent/Dockerfile"
 
 [deploy]
-# $PORT is injected by Railway at runtime; binding to 0.0.0.0 is required
-# so the container is reachable from the Railway proxy.
-startCommand = "uv run uvicorn app.api.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"

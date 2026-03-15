@@ -1,0 +1,31 @@
+# Git
+.git
+.gitignore
+
+# Deps and build artifacts
+node_modules
+apps/web/.next
+apps/web/node_modules
+packages/*/node_modules
+
+# Python
+apps/agent/.venv
+apps/agent/__pycache__
+apps/agent/**/__pycache__
+**/*.pyc
+**/*.pyo
+apps/agent/data/
+
+# Env
+.env
+.env.local
+.env.*.local
+apps/agent/.env
+
+# Docs and config
+README.md
+CLAUDE.md
+*.log
+.turbo
+coverage/
+.pytest_cache/

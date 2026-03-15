@@ -1,14 +1,9 @@
 [build]
-builder = "nixpacks"
-# cd to monorepo root for pnpm install (Railway clones the full repo;
-# Root Directory only sets where commands execute from, not what is cloned).
-# The actual build is driven by nixpacks.toml in this directory.
-buildCommand = "cd ../.. && pnpm install --frozen-lockfile && pnpm --filter @voicecraft/web build"
+builder = "dockerfile"
+dockerfilePath = "apps/web/Dockerfile"
 
 [deploy]
-# next.config.js uses output: 'standalone'; server entry point is server.js.
-# Railway sets CWD to Root Directory (apps/web), so the path is relative to that.
-startCommand = "node .next/standalone/server.js"
+startCommand = "node server.js"
 healthcheckPath = "/"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
