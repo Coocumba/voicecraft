@@ -45,8 +45,8 @@ services:
 
   agent:
     build:
-      context: apps/agent
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/agent/Dockerfile
       target: runner
     env_file:
       - path: apps/agent/.env
