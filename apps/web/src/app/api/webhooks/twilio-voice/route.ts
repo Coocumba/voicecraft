@@ -62,20 +62,17 @@ export async function POST(request: Request) {
   }
 
   // Build the SIP URI for LiveKit
-  const livekitUrl = process.env.LIVEKIT_URL
+  const sipDomain = process.env.LIVEKIT_SIP_DOMAIN
   const sipUsername = process.env.LIVEKIT_SIP_USERNAME
   const sipPassword = process.env.LIVEKIT_SIP_PASSWORD
 
-  if (!livekitUrl || !sipUsername || !sipPassword) {
+  if (!sipDomain || !sipUsername || !sipPassword) {
     console.error("[twilio-voice] LiveKit SIP env vars not configured")
     return new Response(twimlReject("Service temporarily unavailable"), {
       status: 200,
       headers: { "Content-Type": "text/xml" },
     })
   }
-
-  // Derive SIP domain: wss://projectid.livekit.cloud → projectid.sip.livekit.cloud
-  const sipDomain = new URL(livekitUrl).hostname.replace(/^([^.]+)\./, "$1.sip.")
 
   const twiml = [
     '<?xml version="1.0" encoding="UTF-8"?>',

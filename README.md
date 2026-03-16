@@ -172,6 +172,7 @@ uv run python -m src.agent.worker start
 | `LIVEKIT_URL` | LiveKit server URL |
 | `LIVEKIT_API_KEY` | LiveKit API key |
 | `LIVEKIT_API_SECRET` | LiveKit API secret |
+| `LIVEKIT_SIP_DOMAIN` | LiveKit SIP domain (from dashboard, e.g. `xxxxx.sip.livekit.cloud`) |
 | `LIVEKIT_SIP_USERNAME` | SIP auth username for LiveKit inbound trunks |
 | `LIVEKIT_SIP_PASSWORD` | SIP auth password for LiveKit inbound trunks |
 | `VOICECRAFT_API_KEY` | Shared secret for agent-to-web authentication |
