@@ -1,15 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk"
 import { auth } from "@/auth"
 import { prisma, ConversationStatus } from "@voicecraft/db"
-import { BUILDER_SYSTEM_PROMPT } from "@/lib/builder-prompt"
+import { BUILDER_SYSTEM_PROMPT, BUILDER_READY_SIGNAL } from "@/lib/builder-prompt"
 import { rateLimit } from "@/lib/rate-limit"
 
 const RATE_LIMIT_REQUESTS = 20
-const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
+const RATE_LIMIT_WINDOW_MS = 60 * 1000
 
 const anthropic = new Anthropic()
 
-// Shape of each message stored in the BuilderConversation.messages JSON array
 interface ConversationMessage {
   role: "user" | "assistant"
   content: string
@@ -37,7 +36,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const { success, remaining } = rateLimit(session.user.id, {
+  const { success } = rateLimit(session.user.id, {
     limit: RATE_LIMIT_REQUESTS,
     windowMs: RATE_LIMIT_WINDOW_MS,
   })
@@ -66,7 +65,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Request body must be an object" }, { status: 400 })
   }
 
-  const { conversationId, message } = body as Record<string, unknown>
+  const { conversationId, message, agentId: editAgentId } = body as Record<string, unknown>
 
   if (typeof message !== "string" || message.trim() === "") {
     return Response.json({ error: "message is required and must be a non-empty string" }, { status: 400 })
@@ -96,8 +95,6 @@ export async function POST(request: Request) {
         return Response.json({ error: "Conversation is already completed" }, { status: 409 })
       }
     } else {
-      // Create a new conversation with an empty message history.
-      // The empty array cast is necessary for the same Prisma InputJsonValue reason.
       const emptyMessages = [] as unknown as Parameters<
         typeof prisma.builderConversation.create
       >[0]["data"]["messages"]
@@ -110,7 +107,6 @@ export async function POST(request: Request) {
       })
     }
 
-    // Retrieve existing messages and append the new user message
     const existingMessages: ConversationMessage[] = isMessageArray(conversation.messages)
       ? conversation.messages
       : []
@@ -120,11 +116,22 @@ export async function POST(request: Request) {
       { role: "user", content: userMessage },
     ]
 
-    // Call Claude Sonnet with the full conversation history
+    // In edit mode, append the existing agent config to the system prompt
+    // so the AI knows what it's modifying — invisible to the user.
+    let systemPrompt = BUILDER_SYSTEM_PROMPT
+    if (typeof editAgentId === "string" && existingMessages.length === 0) {
+      const existingAgent = await prisma.agent.findUnique({
+        where: { id: editAgentId },
+      })
+      if (existingAgent?.config && typeof existingAgent.config === "object") {
+        systemPrompt += `\n\n## Edit Mode\nThe user is editing an existing agent. Here is the current configuration (JSON):\n\`\`\`json\n${JSON.stringify(existingAgent.config, null, 2)}\n\`\`\`\nDo NOT ask the user to describe their business again — you already know it. Focus only on what they want to change. Acknowledge the current setup briefly, then ask what specific changes they want.`
+      }
+    }
+
     const claudeResponse = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1024,
-      system: BUILDER_SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: updatedMessages.map((msg) => ({
         role: msg.role,
         content: msg.content,
@@ -143,22 +150,33 @@ export async function POST(request: Request) {
 
     const finalMessages: ConversationMessage[] = [...updatedMessages, assistantMessage]
 
-    // Persist the updated message history.
-    // ConversationMessage[] is a valid JSON array; cast through unknown because Prisma's
-    // InputJsonValue requires a string index signature that a typed array doesn't satisfy.
     const messagesJson = finalMessages as unknown as Parameters<
       typeof prisma.builderConversation.update
     >[0]["data"]["messages"]
 
+    // Derive progress: count user messages before the new message was appended, capped at 5
+    const userMessageCount = existingMessages.filter((m) => m.role === "user").length
+    const topicsCovered = Math.min(userMessageCount, 5)
+
+    // Ready when AI's response contains the readiness signal
+    const ready = assistantMessage.content.includes(BUILDER_READY_SIGNAL)
+
+    // Merge both updates into a single write to eliminate the race window between
+    // saving messages and marking the conversation COMPLETED.
     const updatedConversation = await prisma.builderConversation.update({
       where: { id: conversation.id },
-      data: { messages: messagesJson },
+      data: {
+        messages: messagesJson,
+        ...(ready ? { status: ConversationStatus.COMPLETED } : {}),
+      },
     })
 
     return Response.json({
       conversationId: updatedConversation.id,
       response: assistantMessage.content,
       messages: finalMessages,
+      topicsCovered,
+      ready,
     })
   } catch (err) {
     console.error("[POST /api/builder/message]", err)

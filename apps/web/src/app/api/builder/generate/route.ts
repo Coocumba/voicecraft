@@ -13,7 +13,7 @@ function isMessageArray(value: unknown): value is ConversationMessage[] {
   return Array.isArray(value)
 }
 
-const EXTRACTION_PROMPT = `You are a configuration extractor. Given a conversation between a user and an assistant about setting up a dental clinic voice agent, extract the structured configuration as valid JSON.
+const EXTRACTION_PROMPT = `You are a configuration extractor. Given a conversation between a user and an assistant about setting up a voice agent for any business, extract the structured configuration as valid JSON.
 
 Output ONLY a JSON object with no surrounding text, code fences, or explanation. Use this exact schema:
 
@@ -32,18 +32,21 @@ Output ONLY a JSON object with no surrounding text, code fences, or explanation.
     { "name": "string", "duration": number, "price": number }
   ],
   "tone": "formal" | "friendly" | "neutral",
+  "voice": { "gender": "male" | "female", "style": "string" },
   "language": "string",
   "greeting": "string",
   "escalation_rules": ["string"]
 }
 
 Rules:
-- Use null for days the clinic is closed.
+- Use null for days the business is closed.
 - Use 24-hour time (e.g., "09:00", "17:30").
-- duration is in minutes (integer).
-- price is in USD (number, no currency symbol).
-- escalation_rules is an array of plain-English strings describing when to transfer.
-- If a field cannot be determined from the conversation, use a sensible default (e.g., empty array, "friendly" tone, "en" language).
+- duration is in minutes (integer). Use 0 if duration is not applicable for this business type.
+- price is in USD (number, no currency symbol). Use 0 if price is not applicable.
+- escalation_rules is an array of plain-English strings describing when to transfer to a human.
+- voice.gender should be "male" or "female". voice.style is a brief descriptor like "warm", "calm", "energetic" (use "warm" as default).
+- If a field cannot be determined from the conversation, use a sensible default (e.g., empty array, "friendly" tone, "female" voice gender, "en" language).
+- Adapt the services list to the actual business type (products, services, offerings, menu items, etc.).
 - Never add extra keys or wrapper objects.`
 
 export async function POST(request: Request) {

@@ -4,9 +4,22 @@ const path = require('path')
 const nextConfig = {
   output: 'standalone',
   transpilePackages: ['@voicecraft/db'],
-  // Monorepo: tell Turbopack the workspace root is two levels up
   turbopack: {
     root: path.join(__dirname, '../..'),
+  },
+  async redirects() {
+    return [
+      {
+        source: '/dashboard/agents',
+        destination: '/dashboard/voice-agents',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/agents/:path*',
+        destination: '/dashboard/voice-agents/:path*',
+        permanent: true,
+      },
+    ]
   },
   async headers() {
     return [

@@ -20,22 +20,25 @@ model User {
 }
 
 model Agent {
-  id                String      @id @default(cuid())
+  id                String               @id @default(cuid())
   userId            String
-  user              User        @relation(fields: [userId], references: [id])
+  user              User                 @relation(fields: [userId], references: [id])
   name              String
   businessName      String
-  status            AgentStatus @default(DRAFT)
+  status            AgentStatus          @default(DRAFT)
   config            Json
   voiceSettings     Json?
   phoneNumber       String?
   liveKitDispatchId String?
+  conversationId    String?
+  conversation      BuilderConversation? @relation(fields: [conversationId], references: [id])
   calls             Call[]
   appointments      Appointment[]
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 
   @@index([userId])
+  @@index([conversationId])
 }
 
 model Call {
@@ -75,6 +78,7 @@ model BuilderConversation {
   id              String             @id @default(cuid())
   userId          String
   user            User               @relation(fields: [userId], references: [id])
+  agents          Agent[]
   messages        Json
   generatedConfig Json?
   status          ConversationStatus @default(IN_PROGRESS)

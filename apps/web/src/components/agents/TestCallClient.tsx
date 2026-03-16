@@ -184,25 +184,9 @@ export function TestCallClient({ agent }: TestCallClientProps) {
   }, [])
 
   return (
-    <div className="min-h-screen bg-cream flex flex-col">
-      {/* Top bar */}
-      <header className="border-b border-border bg-white px-6 py-4">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
-          <Link
-            href={`/dashboard/agents/${agent.id}`}
-            className="flex items-center gap-2 text-sm text-muted hover:text-ink transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-            </svg>
-            Back to Agent
-          </Link>
-          <p className="text-xs text-muted font-medium uppercase tracking-wider">Test Call</p>
-        </div>
-      </header>
-
+    <div className="flex flex-col">
       {/* Main */}
-      <div className="flex-1 flex items-center justify-center p-6">
+      <div className="flex-1 flex items-center justify-center p-6 min-h-[60vh]">
         {callState === 'idle' && (
           <div className="flex flex-col items-center text-center max-w-sm w-full mx-auto">
             <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mb-6">
@@ -211,7 +195,9 @@ export function TestCallClient({ agent }: TestCallClientProps) {
               </svg>
             </div>
             <h2 className="font-serif text-2xl text-ink mb-1">{agent.name}</h2>
-            <p className="text-sm text-muted mb-1">{agent.businessName}</p>
+            {agent.businessName !== agent.name && (
+              <p className="text-sm text-muted mb-1">{agent.businessName}</p>
+            )}
             <span className={cn(
               'text-xs px-2 py-0.5 rounded-full font-medium mb-8',
               agent.status === 'ACTIVE' ? 'bg-success/10 text-success' : 'bg-muted/15 text-muted'
@@ -270,7 +256,9 @@ export function TestCallClient({ agent }: TestCallClientProps) {
               </svg>
             </div>
             <h2 className="font-serif text-xl text-ink mb-0.5">{agent.name}</h2>
-            <p className="text-sm text-muted mb-4">{agent.businessName}</p>
+            {agent.businessName !== agent.name && (
+              <p className="text-sm text-muted">{agent.businessName}</p>
+            )}
             <p className="font-mono text-3xl font-medium text-ink mb-6 tabular-nums">{formatDuration(elapsed)}</p>
             <div className="mb-8 w-full">
               <Waveform active={!muted} />
@@ -332,7 +320,7 @@ export function TestCallClient({ agent }: TestCallClientProps) {
                 Call Again
               </button>
               <Link
-                href={`/dashboard/agents/${agent.id}`}
+                href={`/dashboard/voice-agents/${agent.id}`}
                 className="flex-1 text-center bg-white text-ink px-6 py-2.5 rounded-full font-medium text-sm border border-border hover:bg-cream transition-colors"
               >
                 Back to Agent

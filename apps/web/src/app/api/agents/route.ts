@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Request body must be an object" }, { status: 400 })
   }
 
-  const { name, businessName, config, voiceSettings } = body as Record<string, unknown>
+  const { name, businessName, config, voiceSettings, conversationId } = body as Record<string, unknown>
 
   if (typeof name !== "string" || name.trim() === "") {
     return Response.json({ error: "name is required and must be a non-empty string" }, { status: 400 })
@@ -60,6 +60,7 @@ export async function POST(request: Request) {
         ...(voiceSettings !== undefined && voiceSettings !== null
           ? { voiceSettings: voiceSettings as Parameters<typeof prisma.agent.create>[0]["data"]["voiceSettings"] }
           : {}),
+        ...(typeof conversationId === "string" && conversationId ? { conversationId } : {}),
       },
     })
 
