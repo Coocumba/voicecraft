@@ -85,13 +85,7 @@ export async function POST(request: Request) {
     "</Response>",
   ].join("")
 
-  console.info("[twilio-voice] Routing call", {
-    to,
-    from,
-    agentId: agent.id,
-    sipDomain,
-    sipUri: `sip:${to}@${sipDomain};transport=tcp`,
-  })
+  console.info("[twilio-voice] Routing call", { to, from, agentId: agent.id })
 
   return new Response(twiml, {
     status: 200,
