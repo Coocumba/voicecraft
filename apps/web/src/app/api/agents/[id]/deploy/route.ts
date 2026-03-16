@@ -26,6 +26,7 @@ async function createLiveKitDispatch(
   const sipClient = new SipClient(livekitUrl, apiKey, apiSecret)
 
   // Create an inbound SIP trunk for the phone number
+  let trunkId: string | undefined
   if (phoneNumber) {
     try {
       const trunk = await sipClient.createSipInboundTrunk(
@@ -38,7 +39,8 @@ async function createLiveKitDispatch(
             : {}),
         }
       )
-      console.info("[deploy] SIP inbound trunk created", { trunkSid: trunk.sipTrunkId, phoneNumber })
+      trunkId = trunk.sipTrunkId
+      console.info("[deploy] SIP inbound trunk created", { trunkId, phoneNumber })
     } catch (err) {
       console.error("[deploy] Failed to create SIP inbound trunk", err)
     }
@@ -59,6 +61,7 @@ async function createLiveKitDispatch(
 
   // Create a dispatch rule that routes inbound calls to a new room per caller.
   // The agent ID is passed as metadata so the worker can load the right config.
+  // Link to the specific trunk so LiveKit knows which calls to route here.
   try {
     const rule = await sipClient.createSipDispatchRule(
       {
@@ -68,6 +71,7 @@ async function createLiveKitDispatch(
       {
         name: `VoiceCraft agent ${agentId}`,
         metadata: agentId,
+        ...(trunkId ? { trunkIds: [trunkId] } : {}),
       }
     )
     const dispatchId = rule.sipDispatchRuleId ?? null

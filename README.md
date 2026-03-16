@@ -177,11 +177,10 @@ uv run python -m src.agent.worker start
 | `VOICECRAFT_API_KEY` | Shared secret for agent-to-web authentication |
 | `GOOGLE_CLIENT_ID` | Google Calendar OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Google Calendar OAuth client secret |
-| `TWILIO_ACCOUNT_SID` | Twilio account SID |
+| `TWILIO_ACCOUNT_SID` | Twilio account SID (enables phone provisioning) |
 | `TWILIO_AUTH_TOKEN` | Twilio auth token |
-| `TWILIO_FROM_NUMBER` | Twilio sender phone number |
+| `TWILIO_FROM_NUMBER` | Twilio sender number for SMS confirmations (optional) |
 | `NEXT_PUBLIC_APP_URL` | Base URL (e.g. `http://localhost:3000`) |
-| `NEXT_PUBLIC_APP_NAME` | Display name (e.g. `VoiceCraft`) |
 
 ### apps/agent (.env)
 
@@ -194,7 +193,11 @@ uv run python -m src.agent.worker start
 | `LIVEKIT_API_SECRET` | LiveKit API secret |
 | `DEEPGRAM_API_KEY` | Deepgram STT key |
 | `GOOGLE_API_KEY` | Gemini LLM key |
-| `ELEVENLABS_API_KEY` | ElevenLabs TTS key |
+| `TTS_PROVIDER` | TTS provider: `openai` (default) or `elevenlabs` |
+| `TTS_VOICE` | OpenAI TTS voice (default: `alloy`) |
+| `TTS_MODEL` | OpenAI TTS model (default: `gpt-4o-mini-tts`) |
+| `OPENAI_API_KEY` | OpenAI API key (required when TTS_PROVIDER=openai) |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key (required when TTS_PROVIDER=elevenlabs) |
 
 ---
 

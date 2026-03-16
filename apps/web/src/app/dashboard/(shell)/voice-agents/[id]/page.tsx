@@ -119,15 +119,15 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
         </div>
       </div>
 
-      {/* Undeployed nudge — links to the header DeployButton (single source of truth) */}
+      {/* Undeployed nudge — context-aware: phone number first, then deploy */}
       {isDraft && (
         <div id="deploy-section" className="flex items-center justify-between bg-accent/5 border border-accent/20 rounded-xl px-5 py-3 text-sm text-accent mb-6">
-          <span>This agent isn&apos;t live yet.</span>
+          <span>{agent.phoneNumber ? 'This agent isn\u0027t live yet.' : 'Add a phone number to go live.'}</span>
           <a
-            href="#agent-header-actions"
+            href={agent.phoneNumber ? '#agent-header-actions' : '#phone-number-section'}
             className="text-accent font-medium hover:text-accent/80 transition-colors whitespace-nowrap"
           >
-            Deploy now →
+            {agent.phoneNumber ? 'Deploy now →' : 'Set up number →'}
           </a>
         </div>
       )}
