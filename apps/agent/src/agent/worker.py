@@ -153,11 +153,12 @@ async def entrypoint(ctx: JobContext) -> None:
     # -- Build session components -----------------------------------------------
     system_prompt = build_system_prompt(config)
     greeting = get_greeting(config)
+    voice_settings = config.get("voiceSettings") if config else None
 
     session = AgentSession(
         stt=create_stt(),
         llm=create_llm(system_prompt),
-        tts=create_tts(),
+        tts=create_tts(voice_settings),
         userdata={"agent_id": agent_id or ""},
     )
 
