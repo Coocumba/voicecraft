@@ -25,7 +25,13 @@ export async function POST(request: Request) {
     params[key] = String(value)
   })
 
-  const url = request.url
+  // Use the public URL for signature validation — behind a reverse proxy/Docker,
+  // request.url resolves to the internal address (e.g. 0.0.0.0:8080) which won't
+  // match the URL Twilio signed against.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  const url = appUrl
+    ? `${appUrl}/api/webhooks/twilio-voice`
+    : request.url
   if (!validateTwilioSignature(url, params, signature)) {
     console.warn("[twilio-voice] Invalid Twilio signature", { url })
     return new Response("Forbidden", { status: 403 })
