@@ -27,6 +27,7 @@ services:
         required: false
     environment:
       - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - AUTH_URL=http://localhost:3000
       - DATABASE_URL=postgresql://voicecraft:voicecraft@postgres:5432/voicecraft
     volumes:
       - ./apps/web/src:/app/apps/web/src
