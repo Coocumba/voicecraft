@@ -153,6 +153,8 @@ NextAuth v5 (Auth.js) with Credentials provider, JWT sessions, DB-backed user lo
 | `/api/agents` | GET, POST | List/create agents |
 | `/api/agents/[id]` | GET, PUT, DELETE | Agent CRUD |
 | `/api/agents/[id]/deploy` | POST | Deploy agent (set ACTIVE) |
+| `/api/agents/[id]/provision-number` | POST, DELETE | Provision/release Twilio phone numbers |
+| `/api/webhooks/twilio-voice` | POST | Inbound call routing — returns TwiML for LiveKit |
 | `/api/builder/message` | POST | Chat with Claude Sonnet builder |
 | `/api/builder/generate` | POST | Generate agent config from conversation |
 | `/api/calls` | GET, POST | List/log calls |

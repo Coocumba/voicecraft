@@ -1,15 +1,22 @@
 import { auth } from "@/auth"
 import { prisma, AgentStatus } from "@voicecraft/db"
 import { SipClient } from "livekit-server-sdk"
+import { configureNumberVoiceWebhook, canProvisionNumbers } from "@/lib/twilio"
 
 interface RouteContext {
   params: Promise<{ id: string }>
 }
 
-async function createLiveKitDispatch(agentId: string, phoneNumber: string | null): Promise<string | null> {
+async function createLiveKitDispatch(
+  agentId: string,
+  phoneNumber: string | null,
+  phoneNumberSid: string | null
+): Promise<string | null> {
   const livekitUrl = process.env.LIVEKIT_URL
   const apiKey = process.env.LIVEKIT_API_KEY
   const apiSecret = process.env.LIVEKIT_API_SECRET
+  const sipUsername = process.env.LIVEKIT_SIP_USERNAME
+  const sipPassword = process.env.LIVEKIT_SIP_PASSWORD
 
   if (!livekitUrl || !apiKey || !apiSecret) {
     console.warn("[deploy] LiveKit env vars not configured — skipping dispatch rule creation")
@@ -18,17 +25,35 @@ async function createLiveKitDispatch(agentId: string, phoneNumber: string | null
 
   const sipClient = new SipClient(livekitUrl, apiKey, apiSecret)
 
-  // Create an inbound SIP trunk for the phone number (if provided)
+  // Create an inbound SIP trunk for the phone number
   if (phoneNumber) {
     try {
       const trunk = await sipClient.createSipInboundTrunk(
         `VoiceCraft agent ${agentId}`,
         [phoneNumber],
-        { krispEnabled: true }
+        {
+          krispEnabled: true,
+          ...(sipUsername && sipPassword
+            ? { authUsername: sipUsername, authPassword: sipPassword }
+            : {}),
+        }
       )
       console.info("[deploy] SIP inbound trunk created", { trunkSid: trunk.sipTrunkId, phoneNumber })
     } catch (err) {
       console.error("[deploy] Failed to create SIP inbound trunk", err)
+    }
+
+    // Point the Twilio number at our voice webhook so inbound calls reach us
+    if (phoneNumberSid && canProvisionNumbers()) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL
+      if (appUrl && !appUrl.includes("localhost")) {
+        try {
+          await configureNumberVoiceWebhook(phoneNumberSid, `${appUrl}/api/webhooks/twilio-voice`)
+          console.info("[deploy] Twilio number voice webhook configured", { phoneNumber })
+        } catch (err) {
+          console.error("[deploy] Failed to configure Twilio number voice webhook", err)
+        }
+      }
     }
   }
 
@@ -74,8 +99,11 @@ export async function POST(_request: Request, { params }: RouteContext) {
     if (existing.status === AgentStatus.ACTIVE) {
       return Response.json({ error: "Agent is already deployed" }, { status: 409 })
     }
+    if (!existing.phoneNumber) {
+      return Response.json({ error: "Assign a phone number before deploying" }, { status: 422 })
+    }
 
-    const dispatchId = await createLiveKitDispatch(id, existing.phoneNumber)
+    const dispatchId = await createLiveKitDispatch(id, existing.phoneNumber, existing.phoneNumberSid)
 
     const agent = await prisma.agent.update({
       where: { id },

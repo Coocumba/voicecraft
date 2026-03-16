@@ -74,6 +74,8 @@ Postgres via Prisma with the following models: `User`, `Agent`, `Call`, `Appoint
 | `POST /api/webhooks/availability` | Check calendar availability (called by voice agent) |
 | `POST /api/webhooks/book` | Book appointments (called by voice agent) |
 | `POST /api/webhooks/send-sms` | Send SMS confirmations via Twilio |
+| `POST /api/webhooks/twilio-voice` | Inbound call routing — returns TwiML to forward calls to LiveKit |
+| `POST /api/agents/[id]/provision-number` | Provision/release Twilio phone numbers for agents |
 | `GET /api/livekit/token` | Generate LiveKit room tokens |
 | `GET /api/integrations/google` | Google Calendar OAuth callback |
 
@@ -165,10 +167,13 @@ uv run python -m src.agent.worker start
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection string |
 | `AUTH_SECRET` | NextAuth secret — generate with `openssl rand -base64 32` |
+| `AUTH_URL` | Public base URL for NextAuth (e.g. `https://app.example.com`) |
 | `ANTHROPIC_API_KEY` | Claude Sonnet for the agent builder |
 | `LIVEKIT_URL` | LiveKit server URL |
 | `LIVEKIT_API_KEY` | LiveKit API key |
 | `LIVEKIT_API_SECRET` | LiveKit API secret |
+| `LIVEKIT_SIP_USERNAME` | SIP auth username for LiveKit inbound trunks |
+| `LIVEKIT_SIP_PASSWORD` | SIP auth password for LiveKit inbound trunks |
 | `VOICECRAFT_API_KEY` | Shared secret for agent-to-web authentication |
 | `GOOGLE_CLIENT_ID` | Google Calendar OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Google Calendar OAuth client secret |
@@ -190,6 +195,78 @@ uv run python -m src.agent.worker start
 | `DEEPGRAM_API_KEY` | Deepgram STT key |
 | `GOOGLE_API_KEY` | Gemini LLM key |
 | `ELEVENLABS_API_KEY` | ElevenLabs TTS key |
+
+---
+
+## Twilio Setup
+
+VoiceCraft uses a single platform Twilio account to provision phone numbers for all customers and send SMS confirmations. Customers never need their own Twilio accounts.
+
+### 1. Create a Twilio account
+
+Sign up at [twilio.com/try-twilio](https://www.twilio.com/try-twilio). A free trial account works for development.
+
+### 2. Get your credentials
+
+From the [Twilio Console](https://console.twilio.com/) dashboard, copy:
+
+- **Account SID** — starts with `AC`
+- **Auth Token** — click to reveal
+
+### 3. Add to your environment
+
+In `apps/web/.env.local`:
+
+```bash
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token_here
+```
+
+With just these two variables, **one-click phone number provisioning** is enabled in the dashboard. VoiceCraft buys numbers from your Twilio account and assigns them to customer agents automatically.
+
+### 4. SIP credentials for call routing
+
+When a customer deploys an agent, VoiceCraft needs to route inbound calls from Twilio to LiveKit. This requires a shared set of SIP credentials used across all agents:
+
+```bash
+LIVEKIT_SIP_USERNAME=voicecraft
+LIVEKIT_SIP_PASSWORD=generate-a-strong-password
+```
+
+You choose these values — they just need to match between the LiveKit inbound trunk and the TwiML that Twilio sends. VoiceCraft handles the rest automatically.
+
+**How call routing works:**
+
+```
+Caller → Twilio number → POST /api/webhooks/twilio-voice
+  → looks up agent by called number
+  → returns TwiML: <Dial><Sip> to LiveKit SIP endpoint
+  → LiveKit inbound trunk (same SIP credentials) accepts the call
+  → dispatch rule routes to agent worker
+```
+
+All numbers share one webhook endpoint. No per-number configuration to manage.
+
+### 5. SMS confirmations (optional)
+
+To also enable SMS appointment confirmations, buy a sender number from **Phone Numbers → Manage → Buy a Number** in the Twilio console, then add:
+
+```bash
+TWILIO_FROM_NUMBER=+15551234567
+```
+
+This is the number SMS messages are sent *from*. It's separate from the per-agent numbers provisioned for voice calls.
+
+### 6. Trial account limitations
+
+Twilio trial accounts can only call/SMS [verified numbers](https://www.twilio.com/docs/usage/tutorials/how-to-use-your-free-trial-account). To test with real calls, upgrade to a paid account or verify the numbers you'll call from.
+
+### What customers see
+
+| Platform config | Dashboard experience |
+|---|---|
+| `ACCOUNT_SID` + `AUTH_TOKEN` set | "Get a phone number" button — one click provisioning |
+| Not set | Manual phone number input field |
 
 ---
 
@@ -270,6 +347,7 @@ Set all variables from the `apps/web` environment table above, plus:
 
 ```
 NEXT_PUBLIC_APP_URL=https://<your-railway-domain>.up.railway.app
+AUTH_URL=https://<your-railway-domain>.up.railway.app
 AUTH_TRUST_HOST=true
 ```
 

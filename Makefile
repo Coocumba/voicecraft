@@ -52,8 +52,12 @@ dev-detach: setup ## Start all services in background
 
 # ── database ──────────────────────────────────────────────────────────────────
 .PHONY: db-migrate
-db-migrate: ## Run Prisma migrations
+db-migrate: ## Run Prisma migrations (dev only — interactive)
 	cd packages/db && pnpm db:migrate
+
+.PHONY: db-deploy
+db-deploy: ## Apply pending migrations non-interactively (use for remote/production DBs)
+	cd packages/db && pnpm db:deploy
 
 .PHONY: db-seed
 db-seed: ## Seed the database with demo data

@@ -66,15 +66,23 @@ export async function PUT(request: Request, { params }: RouteContext) {
       return Response.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const { name, businessName, config, voiceSettings, phoneNumber, status } = body as Record<string, unknown>
+    const { name, businessName, config, voiceSettings, phoneNumber, phoneNumberSource, status } = body as Record<string, unknown>
 
     const VALID_STATUSES = ["DRAFT", "ACTIVE", "INACTIVE"]
+    const VALID_PHONE_SOURCES = ["manual", "provisioned"]
     const updateData: Record<string, unknown> = {}
     if (typeof name === "string" && name.trim() !== "") updateData.name = name.trim()
     if (typeof businessName === "string" && businessName.trim() !== "") updateData.businessName = businessName.trim()
     if (config !== undefined) updateData.config = config
     if (voiceSettings !== undefined) updateData.voiceSettings = voiceSettings
     if (typeof phoneNumber === "string") updateData.phoneNumber = phoneNumber
+    if (typeof phoneNumberSource === "string" && VALID_PHONE_SOURCES.includes(phoneNumberSource)) {
+      updateData.phoneNumberSource = phoneNumberSource
+      // Clear provisioning metadata when switching to manual
+      if (phoneNumberSource === "manual") {
+        updateData.phoneNumberSid = null
+      }
+    }
     if (typeof status === "string" && VALID_STATUSES.includes(status)) updateData.status = status
 
     if (Object.keys(updateData).length === 0) {

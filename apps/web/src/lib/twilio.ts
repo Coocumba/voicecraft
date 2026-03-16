@@ -2,6 +2,8 @@
 // Uses plain fetch against the Twilio API — no SDK needed.
 // Required env vars: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
 
+import crypto from "crypto"
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -44,13 +46,25 @@ function twilioBaseUrl(): string {
 
 /**
  * Returns true if all three Twilio env vars are configured.
- * Used by callers to decide whether to attempt a real send vs. mock.
+ * Used by callers to decide whether to attempt a real SMS send vs. mock.
  */
 export function isTwilioConfigured(): boolean {
   return Boolean(
     process.env.TWILIO_ACCOUNT_SID &&
     process.env.TWILIO_AUTH_TOKEN &&
     process.env.TWILIO_FROM_NUMBER
+  )
+}
+
+/**
+ * Returns true if Twilio account credentials are set (SID + auth token).
+ * Used to determine if the platform can provision phone numbers for customers.
+ * Does NOT require TWILIO_FROM_NUMBER — that's only needed for SMS.
+ */
+export function canProvisionNumbers(): boolean {
+  return Boolean(
+    process.env.TWILIO_ACCOUNT_SID &&
+    process.env.TWILIO_AUTH_TOKEN
   )
 }
 
@@ -154,4 +168,83 @@ export async function purchasePhoneNumber(
 
   const purchased = (await purchaseRes.json()) as TwilioPurchasedNumberResponse
   return { phoneNumber: purchased.phone_number, sid: purchased.sid }
+}
+
+/**
+ * Release (delete) a provisioned phone number from the Twilio account.
+ *
+ * @param numberSid The Twilio IncomingPhoneNumber SID to release
+ */
+export async function releasePhoneNumber(numberSid: string): Promise<void> {
+  const res = await fetch(`${twilioBaseUrl()}/IncomingPhoneNumbers/${numberSid}.json`, {
+    method: "DELETE",
+    headers: { Authorization: twilioBasicAuth() },
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Twilio number release failed (${res.status}): ${text}`)
+  }
+}
+
+/**
+ * Validate an incoming Twilio webhook request signature.
+ * Returns true if the X-Twilio-Signature header is valid.
+ *
+ * @param url      The full URL that Twilio POSTed to
+ * @param params   The POST body params as a record
+ * @param signature The X-Twilio-Signature header value
+ */
+export function validateTwilioSignature(
+  url: string,
+  params: Record<string, string>,
+  signature: string
+): boolean {
+  const authToken = process.env.TWILIO_AUTH_TOKEN
+  if (!authToken) return false
+
+  // Build the data string: URL + sorted param key/value pairs concatenated
+  const sortedKeys = Object.keys(params).sort()
+  let data = url
+  for (const key of sortedKeys) {
+    data += key + params[key]
+  }
+
+  const expected = crypto
+    .createHmac("sha1", authToken)
+    .update(data)
+    .digest("base64")
+
+  return signature === expected
+}
+
+/**
+ * Point a Twilio phone number's inbound voice handling at our webhook.
+ * Twilio will POST to this URL whenever someone calls the number.
+ *
+ * @param numberSid  The Twilio IncomingPhoneNumber SID (e.g. PN...)
+ * @param webhookUrl The full URL to our voice webhook (e.g. https://app.example.com/api/webhooks/twilio-voice)
+ */
+export async function configureNumberVoiceWebhook(
+  numberSid: string,
+  webhookUrl: string
+): Promise<void> {
+  const params = new URLSearchParams({
+    VoiceUrl: webhookUrl,
+    VoiceMethod: "POST",
+  })
+
+  const res = await fetch(`${twilioBaseUrl()}/IncomingPhoneNumbers/${numberSid}.json`, {
+    method: "POST",
+    headers: {
+      Authorization: twilioBasicAuth(),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: params.toString(),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Twilio number voice config failed (${res.status}): ${text}`)
+  }
 }

@@ -29,6 +29,8 @@ model Agent {
   config            Json
   voiceSettings     Json?
   phoneNumber       String?
+  phoneNumberSid    String?
+  phoneNumberSource String?
   liveKitDispatchId String?
   conversationId    String?
   conversation      BuilderConversation? @relation(fields: [conversationId], references: [id])

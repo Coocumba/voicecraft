@@ -3,8 +3,9 @@ import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma, AgentStatus, CallOutcome } from '@voicecraft/db'
 import { formatDate, formatDateTime, formatDuration } from '@/lib/date-utils'
+import { canProvisionNumbers } from '@/lib/twilio'
 import { DeployButton } from '@/components/agents/DeployButton'
-import { EditPhoneNumber } from '@/components/agents/EditPhoneNumber'
+import { PhoneNumberCard } from '@/components/agents/PhoneNumberCard'
 import { GuidedNextSteps } from '@/components/agents/GuidedNextSteps'
 import { CollapsibleConfig } from '@/components/agents/CollapsibleConfig'
 import type { AgentConfig } from '@/lib/builder-types'
@@ -114,7 +115,7 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
           >
             Test Call
           </Link>
-          <DeployButton agentId={agent.id} currentStatus={agent.status} />
+          <DeployButton agentId={agent.id} currentStatus={agent.status} hasPhoneNumber={!!agent.phoneNumber} />
         </div>
       </div>
 
@@ -148,9 +149,14 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
       </div>
 
       {/* Phone number */}
-      <div className="bg-white rounded-xl border border-border p-5 mb-8">
-        <p className="text-xs text-muted font-medium mb-2">Phone Number</p>
-        <EditPhoneNumber agentId={agent.id} currentNumber={agent.phoneNumber} />
+      <div className="mb-8">
+        <PhoneNumberCard
+          agentId={agent.id}
+          phoneNumber={agent.phoneNumber}
+          phoneNumberSource={agent.phoneNumberSource}
+          isActive={agent.status === AgentStatus.ACTIVE}
+          canProvision={canProvisionNumbers()}
+        />
       </div>
 
       {/* Collapsible config */}

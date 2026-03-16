@@ -51,13 +51,12 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false }: Guide
         <div className="bg-white rounded-xl border border-border p-5">
           <p className="font-medium text-ink mb-1">🚀 Deploy to a phone number</p>
           <p className="text-sm text-muted mb-4">
-            Go live and start handling real calls.
+            Get a number and start handling real calls.
           </p>
           <button
             onClick={() => {
               setVisible(false)
-              // Scroll down to the deploy section (id on the nudge banner below)
-              document.getElementById('deploy-section')?.scrollIntoView({ behavior: 'smooth' })
+              document.getElementById('phone-number-section')?.scrollIntoView({ behavior: 'smooth' })
             }}
             className={`inline-flex px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               hasTested
@@ -65,7 +64,7 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false }: Guide
                 : 'bg-white border border-border text-ink hover:bg-cream'
             }`}
           >
-            Set phone number
+            Get a phone number
           </button>
         </div>
       </div>
