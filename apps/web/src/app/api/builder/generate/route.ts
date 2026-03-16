@@ -1,8 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk"
 import { auth } from "@/auth"
 import { prisma, ConversationStatus } from "@voicecraft/db"
-
-const anthropic = new Anthropic()
+import { chatCompletion } from "@/lib/llm"
 
 interface ConversationMessage {
   role: "user" | "assistant"
@@ -97,9 +95,7 @@ export async function POST(request: Request) {
       .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
       .join("\n\n")
 
-    const claudeResponse = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 2048,
+    const llmResponse = await chatCompletion({
       system: EXTRACTION_PROMPT,
       messages: [
         {
@@ -107,18 +103,14 @@ export async function POST(request: Request) {
           content: `Extract the agent configuration from this conversation:\n\n${transcript}`,
         },
       ],
+      maxTokens: 2048,
     })
-
-    const rawContent = claudeResponse.content[0]
-    if (!rawContent || rawContent.type !== "text") {
-      throw new Error("Unexpected response type from Claude during extraction")
-    }
 
     let generatedConfig: unknown
     try {
-      generatedConfig = JSON.parse(rawContent.text)
+      generatedConfig = JSON.parse(llmResponse.content)
     } catch {
-      console.error("[POST /api/builder/generate] Claude returned non-JSON:", rawContent.text)
+      console.error("[POST /api/builder/generate] LLM returned non-JSON:", llmResponse.content)
       return Response.json(
         { error: "Failed to parse generated configuration — please try again" },
         { status: 502 }

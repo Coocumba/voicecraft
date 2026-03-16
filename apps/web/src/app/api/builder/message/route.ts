@@ -1,13 +1,11 @@
-import Anthropic from "@anthropic-ai/sdk"
 import { auth } from "@/auth"
 import { prisma, ConversationStatus } from "@voicecraft/db"
 import { BUILDER_SYSTEM_PROMPT, BUILDER_READY_SIGNAL } from "@/lib/builder-prompt"
+import { chatCompletion } from "@/lib/llm"
 import { rateLimit } from "@/lib/rate-limit"
 
 const RATE_LIMIT_REQUESTS = 20
 const RATE_LIMIT_WINDOW_MS = 60 * 1000
-
-const anthropic = new Anthropic()
 
 interface ConversationMessage {
   role: "user" | "assistant"
@@ -128,24 +126,15 @@ export async function POST(request: Request) {
       }
     }
 
-    const claudeResponse = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
+    const llmResponse = await chatCompletion({
       system: systemPrompt,
-      messages: updatedMessages.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      })),
+      messages: updatedMessages,
+      maxTokens: 1024,
     })
-
-    const assistantContent = claudeResponse.content[0]
-    if (!assistantContent || assistantContent.type !== "text") {
-      throw new Error("Unexpected response type from Claude")
-    }
 
     const assistantMessage: ConversationMessage = {
       role: "assistant",
-      content: assistantContent.text,
+      content: llmResponse.content,
     }
 
     const finalMessages: ConversationMessage[] = [...updatedMessages, assistantMessage]
