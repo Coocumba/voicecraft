@@ -3,6 +3,7 @@
 // via plain fetch to avoid bundling the full googleapis SDK.
 
 import { prisma, IntegrationProvider } from "@voicecraft/db"
+import { toUTC } from "@/lib/timezone-utils"
 
 // ---------------------------------------------------------------------------
 // Internal types
@@ -128,17 +129,19 @@ export async function getValidAccessToken(userId: string): Promise<string> {
 }
 
 /**
- * List calendar events for a given day.
+ * List calendar events for a given day in the specified timezone.
  *
  * @param accessToken  Valid Google OAuth access token.
- * @param dateStr      ISO 8601 date (YYYY-MM-DD).  Time zone assumed to be UTC.
+ * @param dateStr      ISO 8601 date (YYYY-MM-DD).
+ * @param timezone     IANA timezone string (e.g. "America/Chicago"). Defaults to "UTC".
  */
 async function listEventsForDate(
   accessToken: string,
-  dateStr: string
+  dateStr: string,
+  timezone: string = "UTC"
 ): Promise<GoogleCalendarEvent[]> {
-  const dayStart = new Date(`${dateStr}T00:00:00Z`)
-  const dayEnd = new Date(`${dateStr}T23:59:59Z`)
+  const dayStart = toUTC(`${dateStr}T00:00:00`, timezone)
+  const dayEnd = toUTC(`${dateStr}T00:00:00`, timezone, 1) // midnight next day
 
   if (isNaN(dayStart.getTime())) {
     throw new Error(`Invalid date: ${dateStr}`)
@@ -172,57 +175,35 @@ async function listEventsForDate(
 }
 
 /**
- * Check availability for a given date by fetching existing calendar events and
- * computing free 30-minute slots between 09:00 and 17:00 UTC.
+ * Fetch calendar events for a given date and return their start/end times.
+ * Slot generation is handled by the availability webhook using generateSlots().
+ *
+ * @param userId    The user whose Google Calendar to query.
+ * @param date      ISO 8601 date (YYYY-MM-DD).
+ * @param timezone  IANA timezone string. Defaults to "UTC".
  */
-export async function checkAvailability(
+export async function getCalendarEventsForDate(
   userId: string,
   date: string,
-  _service: string
-): Promise<AvailableSlot[]> {
+  timezone: string = "UTC"
+): Promise<Array<{ start: Date; end: Date }>> {
   const accessToken = await getValidAccessToken(userId)
-  const events = await listEventsForDate(accessToken, date)
+  const events = await listEventsForDate(accessToken, date, timezone)
 
-  // Build a list of busy intervals from existing events.
-  const busyIntervals: Array<{ start: number; end: number }> = []
+  const intervals: Array<{ start: Date; end: Date }> = []
   for (const event of events) {
     if (event.status === "cancelled") continue
     const startStr = event.start.dateTime ?? event.start.date
     const endStr = event.end.dateTime ?? event.end.date
     if (!startStr || !endStr) continue
-    const startMs = new Date(startStr).getTime()
-    const endMs = new Date(endStr).getTime()
-    if (!isNaN(startMs) && !isNaN(endMs)) {
-      busyIntervals.push({ start: startMs, end: endMs })
+    const start = new Date(startStr)
+    const end = new Date(endStr)
+    if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+      intervals.push({ start, end })
     }
   }
 
-  // Generate 30-minute candidate slots from 09:00 to 17:00 UTC.
-  const slots: AvailableSlot[] = []
-  const dateParts = date.split("-").map(Number)
-  const year = dateParts[0] ?? 0
-  const month = dateParts[1] ?? 1
-  const day = dateParts[2] ?? 1
-
-  for (let hour = 9; hour < 17; hour++) {
-    for (const minute of [0, 30]) {
-      const slotStart = Date.UTC(year, month - 1, day, hour, minute, 0)
-      const slotEnd = slotStart + 30 * 60 * 1000
-
-      const overlaps = busyIntervals.some(
-        (busy) => slotStart < busy.end && slotEnd > busy.start
-      )
-
-      if (!overlaps) {
-        slots.push({
-          time: new Date(slotStart).toISOString(),
-          endTime: new Date(slotEnd).toISOString(),
-        })
-      }
-    }
-  }
-
-  return slots
+  return intervals
 }
 
 /**
