@@ -1,5 +1,6 @@
 import { auth } from "@/auth"
-import { prisma } from "@voicecraft/db"
+import { prisma, AgentStatus } from "@voicecraft/db"
+import { releasePhoneNumber } from "@/lib/twilio"
 import { SipClient } from "livekit-server-sdk"
 
 interface RouteContext {
@@ -89,19 +90,30 @@ export async function PUT(request: Request, { params }: RouteContext) {
       return Response.json({ error: "No valid fields to update" }, { status: 400 })
     }
 
-    // Clean up LiveKit dispatch rule when deactivating
-    if (updateData.status === "INACTIVE" && existing.liveKitDispatchId) {
+    // Clean up LiveKit resources when deactivating
+    if (updateData.status === "INACTIVE" && (existing.liveKitDispatchId || existing.liveKitTrunkId)) {
       const livekitUrl = process.env.LIVEKIT_URL
       const apiKey = process.env.LIVEKIT_API_KEY
       const apiSecret = process.env.LIVEKIT_API_SECRET
       if (livekitUrl && apiKey && apiSecret) {
-        try {
-          const sipClient = new SipClient(livekitUrl, apiKey, apiSecret)
-          await sipClient.deleteSipDispatchRule(existing.liveKitDispatchId)
-          updateData.liveKitDispatchId = null
-          console.info("[PUT /api/agents/:id] Deleted dispatch rule", { dispatchId: existing.liveKitDispatchId })
-        } catch (err) {
-          console.error("[PUT /api/agents/:id] Failed to delete dispatch rule", err)
+        const sipClient = new SipClient(livekitUrl, apiKey, apiSecret)
+        if (existing.liveKitDispatchId) {
+          try {
+            await sipClient.deleteSipDispatchRule(existing.liveKitDispatchId)
+            updateData.liveKitDispatchId = null
+            console.info("[PUT /api/agents/:id] Deleted dispatch rule", { dispatchId: existing.liveKitDispatchId })
+          } catch (err) {
+            console.error("[PUT /api/agents/:id] Failed to delete dispatch rule", err)
+          }
+        }
+        if (existing.liveKitTrunkId) {
+          try {
+            await sipClient.deleteSipTrunk(existing.liveKitTrunkId)
+            updateData.liveKitTrunkId = null
+            console.info("[PUT /api/agents/:id] Deleted SIP trunk", { trunkId: existing.liveKitTrunkId })
+          } catch (err) {
+            console.error("[PUT /api/agents/:id] Failed to delete SIP trunk", err)
+          }
         }
       }
     }
@@ -131,6 +143,42 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
     }
     if (existing.userId !== session.user.id) {
       return Response.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    // Release provisioned Twilio number
+    if (existing.phoneNumberSource === "provisioned" && existing.phoneNumberSid) {
+      try {
+        await releasePhoneNumber(existing.phoneNumberSid)
+        console.info("[DELETE /api/agents/:id] Released Twilio number", { sid: existing.phoneNumberSid })
+      } catch (err) {
+        console.error("[DELETE /api/agents/:id] Failed to release Twilio number", err)
+      }
+    }
+
+    // Clean up LiveKit resources
+    if (existing.liveKitDispatchId || existing.liveKitTrunkId) {
+      const livekitUrl = process.env.LIVEKIT_URL
+      const apiKey = process.env.LIVEKIT_API_KEY
+      const apiSecret = process.env.LIVEKIT_API_SECRET
+      if (livekitUrl && apiKey && apiSecret) {
+        const sipClient = new SipClient(livekitUrl, apiKey, apiSecret)
+        if (existing.liveKitDispatchId) {
+          try {
+            await sipClient.deleteSipDispatchRule(existing.liveKitDispatchId)
+            console.info("[DELETE /api/agents/:id] Deleted dispatch rule", { dispatchId: existing.liveKitDispatchId })
+          } catch (err) {
+            console.error("[DELETE /api/agents/:id] Failed to delete dispatch rule", err)
+          }
+        }
+        if (existing.liveKitTrunkId) {
+          try {
+            await sipClient.deleteSipTrunk(existing.liveKitTrunkId)
+            console.info("[DELETE /api/agents/:id] Deleted SIP trunk", { trunkId: existing.liveKitTrunkId })
+          } catch (err) {
+            console.error("[DELETE /api/agents/:id] Failed to delete SIP trunk", err)
+          }
+        }
+      }
     }
 
     await prisma.agent.delete({ where: { id } })

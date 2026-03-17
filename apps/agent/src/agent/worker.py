@@ -166,6 +166,14 @@ async def entrypoint(ctx: JobContext) -> None:
 
     call_start = time.monotonic()
 
+    # Extract caller number from SIP participant attributes
+    caller_number: str | None = None
+    for p in ctx.room.remote_participants.values():
+        phone = p.attributes.get("sip.phoneNumber")
+        if phone:
+            caller_number = phone
+            break
+
     # Log the call when the session shuts down
     import asyncio
 
@@ -178,6 +186,7 @@ async def entrypoint(ctx: JobContext) -> None:
             agent_id=agent_id,
             duration_secs=duration,
             outcome="COMPLETED",
+            caller_number=caller_number,
         ))
 
     await session.start(agent=agent, room=ctx.room)

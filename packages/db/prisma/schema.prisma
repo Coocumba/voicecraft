@@ -31,6 +31,7 @@ model Agent {
   phoneNumber       String?
   phoneNumberSid    String?
   phoneNumberSource String?
+  liveKitTrunkId    String?
   liveKitDispatchId String?
   conversationId    String?
   conversation      BuilderConversation? @relation(fields: [conversationId], references: [id])
@@ -46,7 +47,7 @@ model Agent {
 model Call {
   id           String      @id @default(cuid())
   agentId      String
-  agent        Agent       @relation(fields: [agentId], references: [id])
+  agent        Agent       @relation(fields: [agentId], references: [id], onDelete: Cascade)
   callerNumber String?
   duration     Int?
   outcome      CallOutcome
@@ -61,9 +62,9 @@ model Call {
 model Appointment {
   id              String            @id @default(cuid())
   agentId         String
-  agent           Agent             @relation(fields: [agentId], references: [id])
+  agent           Agent             @relation(fields: [agentId], references: [id], onDelete: Cascade)
   callId          String?
-  call            Call?             @relation(fields: [callId], references: [id])
+  call            Call?             @relation(fields: [callId], references: [id], onDelete: SetNull)
   patientName     String
   patientPhone    String?
   scheduledAt     DateTime

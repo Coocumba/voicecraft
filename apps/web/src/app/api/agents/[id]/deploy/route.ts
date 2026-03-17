@@ -7,11 +7,16 @@ interface RouteContext {
   params: Promise<{ id: string }>
 }
 
+interface LiveKitDeployResult {
+  trunkId: string | null
+  dispatchId: string | null
+}
+
 async function createLiveKitDispatch(
   agentId: string,
   phoneNumber: string | null,
   phoneNumberSid: string | null
-): Promise<string | null> {
+): Promise<LiveKitDeployResult> {
   const livekitUrl = process.env.LIVEKIT_URL
   const apiKey = process.env.LIVEKIT_API_KEY
   const apiSecret = process.env.LIVEKIT_API_SECRET
@@ -20,7 +25,7 @@ async function createLiveKitDispatch(
 
   if (!livekitUrl || !apiKey || !apiSecret) {
     console.warn("[deploy] LiveKit env vars not configured — skipping dispatch rule creation")
-    return null
+    return { trunkId: null, dispatchId: null }
   }
 
   const sipClient = new SipClient(livekitUrl, apiKey, apiSecret)
@@ -76,10 +81,10 @@ async function createLiveKitDispatch(
     )
     const dispatchId = rule.sipDispatchRuleId ?? null
     console.info("[deploy] SIP dispatch rule created", { dispatchId })
-    return dispatchId
+    return { trunkId: trunkId ?? null, dispatchId }
   } catch (err) {
     console.error("[deploy] Failed to create SIP dispatch rule", err)
-    return null
+    return { trunkId: trunkId ?? null, dispatchId: null }
   }
 }
 
@@ -107,12 +112,13 @@ export async function POST(_request: Request, { params }: RouteContext) {
       return Response.json({ error: "Assign a phone number before deploying" }, { status: 422 })
     }
 
-    const dispatchId = await createLiveKitDispatch(id, existing.phoneNumber, existing.phoneNumberSid)
+    const { trunkId, dispatchId } = await createLiveKitDispatch(id, existing.phoneNumber, existing.phoneNumberSid)
 
     const agent = await prisma.agent.update({
       where: { id },
       data: {
         status: AgentStatus.ACTIVE,
+        ...(trunkId ? { liveKitTrunkId: trunkId } : {}),
         ...(dispatchId ? { liveKitDispatchId: dispatchId } : {}),
       },
     })

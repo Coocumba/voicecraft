@@ -38,7 +38,7 @@ export default function RootLayout({
       >
         <SessionProvider>
           {children}
-          <Toaster position="top-right" richColors />
+          <Toaster position="bottom-right" richColors />
         </SessionProvider>
       </body>
     </html>

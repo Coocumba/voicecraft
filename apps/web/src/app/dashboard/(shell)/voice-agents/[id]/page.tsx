@@ -8,6 +8,7 @@ import { DeployButton } from '@/components/agents/DeployButton'
 import { PhoneNumberCard } from '@/components/agents/PhoneNumberCard'
 import { GuidedNextSteps } from '@/components/agents/GuidedNextSteps'
 import { CollapsibleConfig } from '@/components/agents/CollapsibleConfig'
+import { DeleteAgentButton } from '@/components/agents/DeleteAgentButton'
 import type { AgentConfig } from '@/lib/builder-types'
 
 interface PageProps {
@@ -204,6 +205,19 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
           </div>
         )}
       </section>
+
+      {/* Danger zone */}
+      <div className="mt-12 pt-6 border-t border-red-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-ink">Delete this agent</p>
+            <p className="text-xs text-muted mt-0.5">
+              Permanently remove this agent{agent.phoneNumberSource === 'provisioned' ? ', release its phone number,' : ''} and all associated data.
+            </p>
+          </div>
+          <DeleteAgentButton agentId={agent.id} agentName={agent.name} />
+        </div>
+      </div>
     </div>
   )
 }

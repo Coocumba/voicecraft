@@ -122,17 +122,26 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
       }
     }
 
-    // Clean up LiveKit dispatch rule if agent was active
-    if (agent.status === AgentStatus.ACTIVE && agent.liveKitDispatchId) {
+    // Clean up LiveKit resources if agent was active
+    if (agent.status === AgentStatus.ACTIVE && (agent.liveKitDispatchId || agent.liveKitTrunkId)) {
       const livekitUrl = process.env.LIVEKIT_URL
       const apiKey = process.env.LIVEKIT_API_KEY
       const apiSecret = process.env.LIVEKIT_API_SECRET
       if (livekitUrl && apiKey && apiSecret) {
-        try {
-          const sipClient = new SipClient(livekitUrl, apiKey, apiSecret)
-          await sipClient.deleteSipDispatchRule(agent.liveKitDispatchId)
-        } catch (err) {
-          console.error("[provision-number] Failed to delete dispatch rule", err)
+        const sipClient = new SipClient(livekitUrl, apiKey, apiSecret)
+        if (agent.liveKitDispatchId) {
+          try {
+            await sipClient.deleteSipDispatchRule(agent.liveKitDispatchId)
+          } catch (err) {
+            console.error("[provision-number] Failed to delete dispatch rule", err)
+          }
+        }
+        if (agent.liveKitTrunkId) {
+          try {
+            await sipClient.deleteSipTrunk(agent.liveKitTrunkId)
+          } catch (err) {
+            console.error("[provision-number] Failed to delete SIP trunk", err)
+          }
         }
       }
     }
@@ -143,6 +152,7 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
         phoneNumber: null,
         phoneNumberSid: null,
         phoneNumberSource: null,
+        liveKitTrunkId: null,
         liveKitDispatchId: null,
         ...(agent.status === AgentStatus.ACTIVE ? { status: AgentStatus.INACTIVE } : {}),
       },
