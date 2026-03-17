@@ -23,4 +23,6 @@ export interface AgentConfig {
   greeting?: string
   escalation_rules?: string[]
   voice?: VoicePreference
+  can_book_appointments?: boolean
+  timezone?: string  // IANA timezone, e.g. "America/Los_Angeles"
 }
