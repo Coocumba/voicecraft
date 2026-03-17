@@ -12,8 +12,6 @@ You are {business_name}'s friendly and professional dental receptionist. Your na
 
 ## Your role
 You handle inbound phone calls for patients who want to:
-- Check appointment availability
-- Book new appointments
 - Ask about services or office hours
 - Get general information about the practice
 
@@ -28,17 +26,6 @@ You handle inbound phone calls for patients who want to:
 ### Greeting
 When a call connects, you will receive an explicit greeting instruction. Follow it exactly.
 
-### Booking an appointment
-Before booking, you MUST collect from the patient:
-1. Their full name
-2. Their phone number (for confirmation)
-3. Their preferred date and time
-4. The service or reason for the visit
-
-Use the `check_availability` tool first to confirm the slot is open. If it is not, suggest the \
-nearest available alternatives. Once the patient confirms, use the `book_appointment` tool to \
-create the booking. After booking, offer to send an SMS confirmation using `send_sms`.
-
 ### Tone and style
 - Speak naturally and warmly, as if on a real phone call.
 - Keep responses short — this is voice, not text. Avoid long lists or bullet points.
@@ -50,10 +37,32 @@ create the booking. After booking, offer to send an SMS confirmation using `send
 {escalation_instructions}
 
 ### Important constraints
-- Never invent availability — always call `check_availability` first.
 - Never share other patients' information.
 - If a patient sounds distressed or mentions a dental emergency, escalate immediately and \
 advise them to seek urgent care or call 911 if necessary.
+"""
+
+_BOOKING_PROMPT = """
+
+## Booking appointments
+
+Patients may also want to:
+- Check appointment availability
+- Book new appointments
+
+### Booking an appointment
+Before booking, you MUST collect from the patient:
+1. Their full name
+2. Their phone number (for confirmation)
+3. Their preferred date and time
+4. The service or reason for the visit
+
+Use the `check_availability` tool first to confirm the slot is open. If it is not, suggest the \
+nearest available alternatives. Once the patient confirms, use the `book_appointment` tool to \
+create the booking. After booking, offer to send an SMS confirmation using `send_sms`.
+
+### Important booking constraints
+- Never invent availability — always call `check_availability` first.
 """
 
 
@@ -118,13 +127,19 @@ def build_system_prompt(config: dict[str, Any] | None) -> str:
             "member will return their call as soon as possible."
         )
 
-    return _BASE_PROMPT.format(
+    prompt = _BASE_PROMPT.format(
         business_name=business_name,
         agent_name=agent_name,
         services=services,
         hours=hours,
         escalation_instructions=escalation_instructions,
     ).strip()
+
+    can_book = config.get("can_book_appointments", True)
+    if can_book:
+        prompt += _BOOKING_PROMPT
+
+    return prompt
 
 
 def get_greeting(config: dict[str, Any] | None, contact: dict[str, Any] | None = None) -> str:
@@ -154,54 +169,59 @@ def get_greeting(config: dict[str, Any] | None, contact: dict[str, Any] | None =
     return base_greeting
 
 
-def build_caller_context_suffix(contact: dict[str, Any]) -> str:
+def build_caller_context_suffix(contact: dict[str, Any] | None, appointments: dict[str, Any] | None = None) -> str:
     """Build the '## Caller Context' section to append to the system prompt.
 
-    Called only when the contact-lookup webhook returns a match. Keeps all
-    prompt construction logic centralised in this module.
+    Called to enrich the system prompt with caller history. Keeps all prompt
+    construction logic centralised in this module.
 
     Args:
         contact: Contact dict with keys: name (str | None), callCount (int),
-                 lastCalledAt (str | None), recentAppointments (list | None).
+                 lastCalledAt (str | None). None if caller is unknown.
+        appointments: Dict with ``upcoming`` and ``past`` lists of appointment
+                      dicts, each containing service, scheduledAt, status.
     """
-    name: str | None = contact.get("name")
-    call_count: int = int(contact.get("callCount", 0))
-    last_called_at: str | None = contact.get("lastCalledAt")
-    recent_appointments: list[Any] = contact.get("recentAppointments") or []
+    if appointments is None:
+        appointments = {"upcoming": [], "past": []}
+
+    upcoming: list[dict[str, Any]] = appointments.get("upcoming") or []
+    past: list[dict[str, Any]] = appointments.get("past") or []
+
+    # Nothing to say if caller is unknown and has no appointments.
+    if contact is None and not upcoming and not past:
+        return ""
 
     lines: list[str] = ["\n\n## Caller Context"]
 
-    if name:
-        lines.append(
-            f"This caller is a returning customer: {name}."
-        )
-    else:
-        lines.append("This is a returning caller.")
+    if contact:
+        name: str | None = contact.get("name")
+        call_count: int = int(contact.get("callCount", 0))
+        last_called_at: str | None = contact.get("lastCalledAt")
 
-    call_summary = f"They have called {call_count} time{'s' if call_count != 1 else ''}."
-    if last_called_at:
-        call_summary += f" Last call: {last_called_at}."
-    lines.append(call_summary)
+        if name:
+            lines.append(f"This caller is a returning customer: {name}.")
+        else:
+            lines.append("This is a returning caller.")
 
-    if recent_appointments:
-        # Summarise each appointment entry without assuming a fixed schema —
-        # just render whatever fields are present so the LLM has context.
-        appt_parts: list[str] = []
-        for appt in recent_appointments:
-            if isinstance(appt, dict):
-                appt_parts.append(
-                    ", ".join(f"{k}: {v}" for k, v in appt.items() if v is not None)
-                )
-            else:
-                appt_parts.append(str(appt))
-        if appt_parts:
-            lines.append(
-                "Recent appointments: " + "; ".join(appt_parts) + "."
-            )
+        call_summary = f"They have called {call_count} time{'s' if call_count != 1 else ''}."
+        if last_called_at:
+            call_summary += f" Last call: {last_called_at}."
+        lines.append(call_summary)
 
-    if name:
+    for appt in upcoming:
+        service = appt.get("service", "appointment")
+        scheduled_at = appt.get("scheduledAt", "an unknown date")
+        lines.append(f"This caller has an upcoming {service} on {scheduled_at}.")
+
+    if past:
+        first_past = past[0]
+        service = first_past.get("service", "appointment")
+        scheduled_at = first_past.get("scheduledAt", "an unknown date")
+        lines.append(f"This caller's last visit was {scheduled_at} for {service}.")
+
+    if contact and contact.get("name"):
         lines.append("Greet them warmly by name and be aware of their history.")
-    else:
+    elif contact:
         lines.append("Greet them warmly and be aware of their history.")
 
     return "\n".join(lines)
