@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { formatDateTime } from '@/lib/date-utils'
+import { formatDateTimeUTC } from '@/lib/date-utils'
 
 export interface AppointmentData {
   id: string
@@ -82,9 +82,9 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
     <div className="bg-white rounded-xl border border-border p-5">
       {/* Top row: service + date */}
       <div className="flex items-start justify-between gap-4 mb-2">
-        <p className="font-medium text-ink leading-snug">{appointment.service}</p>
+        <p className="font-medium text-ink leading-snug capitalize">{appointment.service}</p>
         <p className="text-sm text-muted whitespace-nowrap flex-shrink-0">
-          {formatDateTime(scheduledDate)}
+          {formatDateTimeUTC(scheduledDate)}
         </p>
       </div>
 

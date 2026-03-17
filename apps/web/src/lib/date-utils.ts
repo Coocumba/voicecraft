@@ -49,6 +49,22 @@ export function formatDateTime(date: Date): string {
 }
 
 /**
+ * Formats a Date as date + time in UTC, e.g. "Mar 14, 2026, 9:00 AM".
+ * Use for appointments where the stored time IS the intended display time
+ * (business local time stored as UTC).
+ */
+export function formatDateTimeUTC(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    timeZone: 'UTC',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+/**
  * Converts seconds to "Xm Ys" display string.
  */
 export function formatDuration(seconds: number): string {
