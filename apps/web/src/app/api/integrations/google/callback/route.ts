@@ -48,9 +48,21 @@ export async function GET(request: Request): Promise<Response> {
 
   // Verify the state token matches what we set in the cookie.
   const cookieStore = await cookies()
-  const storedState = cookieStore.get(GOOGLE_OAUTH_STATE_COOKIE)?.value
+  const cookieValue = cookieStore.get(GOOGLE_OAUTH_STATE_COOKIE)?.value
+  let storedCsrf: string | undefined
+  let returnTo: string | null = null
+  try {
+    const parsed = JSON.parse(cookieValue ?? "") as { csrf?: unknown; returnTo?: unknown }
+    storedCsrf = typeof parsed.csrf === "string" ? parsed.csrf : undefined
+    returnTo =
+      typeof parsed.returnTo === "string" && parsed.returnTo.startsWith("/dashboard/")
+        ? parsed.returnTo
+        : null
+  } catch {
+    storedCsrf = cookieValue // backward compat: plain hex string
+  }
 
-  if (!storedState || storedState !== state) {
+  if (!storedCsrf || storedCsrf !== state) {
     console.error("[Google OAuth] State mismatch — possible CSRF", {
       userId: userId,
     })
@@ -147,5 +159,8 @@ export async function GET(request: Request): Promise<Response> {
     redirect("/dashboard/settings?integration=error&provider=google")
   }
 
-  redirect("/dashboard/settings?integration=success&provider=google")
+  const redirectUrl = returnTo
+    ? `${returnTo}${returnTo.includes("?") ? "&" : "?"}integration=success`
+    : "/dashboard/settings?integration=success&provider=google"
+  redirect(redirectUrl)
 }

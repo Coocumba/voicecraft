@@ -16,7 +16,7 @@ const SCOPES = [
   "https://www.googleapis.com/auth/calendar.readonly",
 ].join(" ")
 
-export async function GET(): Promise<Response> {
+export async function GET(request: Request): Promise<Response> {
   const session = await auth()
   if (!session?.user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 })
@@ -32,11 +32,16 @@ export async function GET(): Promise<Response> {
     )
   }
 
+  const { searchParams } = new URL(request.url)
+  const returnToParam = searchParams.get("returnTo")
+  const returnTo = returnToParam?.startsWith("/dashboard/") ? returnToParam : null
+
   // Generate a 32-byte random state token to prevent CSRF.
   const state = randomBytes(32).toString("hex")
 
   const cookieStore = await cookies()
-  cookieStore.set(GOOGLE_OAUTH_STATE_COOKIE, state, {
+  const cookieValue = JSON.stringify({ csrf: state, returnTo })
+  cookieStore.set(GOOGLE_OAUTH_STATE_COOKIE, cookieValue, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
