@@ -74,10 +74,12 @@ class DentalReceptionist(Agent):
     RunContext and session.
     """
 
-    def __init__(self, instructions: str) -> None:
+    def __init__(self, instructions: str, tools: list | None = None) -> None:
+        if tools is None:
+            tools = [check_availability, book_appointment, send_sms]
         super().__init__(
             instructions=instructions,
-            tools=[check_availability, book_appointment, send_sms],
+            tools=tools,
         )
 
     async def on_enter(self) -> None:
@@ -164,12 +166,12 @@ def _resolve_voice_settings(config: dict[str, Any]) -> dict[str, Any] | None:
     return {"provider": "openai", "voice": voice_name}
 
 
-async def _lookup_contact(agent_id: str, phone: str) -> dict[str, Any] | None:
+async def _lookup_contact(agent_id: str, phone: str) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     """Look up a contact by phone number via the contact-lookup webhook.
 
-    Returns the contact dict on a successful hit, or None on a miss or any
-    error. This is intentionally fire-and-forget: a failed lookup must never
-    prevent the call from proceeding.
+    Returns a tuple of (contact_dict_or_None, appointments_dict). The
+    appointments dict has ``upcoming`` and ``past`` lists. On a miss or any
+    error both values are empty/None so the call can proceed normally.
 
     Timeout is deliberately short (3 s total) so a slow API does not delay
     call pickup.
@@ -177,6 +179,7 @@ async def _lookup_contact(agent_id: str, phone: str) -> dict[str, Any] | None:
     Note: phone numbers and contact names are never logged — only outcome tags
     ("contact_found" / "contact_not_found") to avoid emitting PII.
     """
+    empty_appts: dict[str, Any] = {"upcoming": [], "past": []}
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(3.0)) as client:
             resp = await client.post(
@@ -188,13 +191,15 @@ async def _lookup_contact(agent_id: str, phone: str) -> dict[str, Any] | None:
             data: dict[str, Any] = resp.json()
             if data.get("found"):
                 logger.info("contact_found", agent_id=agent_id)
-                return data.get("contact")
+                contact = data.get("contact")
+                appointments = data.get("appointments", empty_appts)
+                return contact, appointments
     except Exception as exc:
         logger.warning("contact_lookup_failed", error=str(exc))
-        return None
+        return None, empty_appts
 
     logger.debug("contact_not_found", agent_id=agent_id)
-    return None
+    return None, empty_appts
 
 
 server = AgentServer()
@@ -239,13 +244,13 @@ async def entrypoint(ctx: JobContext) -> None:
     # Contact lookup: fire-and-forget — None on any miss or failure.
     # Only attempted when both agent_id and caller_number are known.
     contact: dict[str, Any] | None = None
+    appointments: dict[str, Any] = {"upcoming": [], "past": []}
     if agent_id and caller_number:
-        contact = await _lookup_contact(agent_id, caller_number)
+        contact, appointments = await _lookup_contact(agent_id, caller_number)
 
     # -- Build session components -----------------------------------------------
     system_prompt = build_system_prompt(config)
-    if contact:
-        system_prompt += build_caller_context_suffix(contact)
+    system_prompt += build_caller_context_suffix(contact, appointments)
 
     greeting = get_greeting(config, contact)
 
@@ -253,14 +258,24 @@ async def entrypoint(ctx: JobContext) -> None:
     # voice config from the builder (gender/style), and map to TTS voice names.
     voice_settings = _resolve_voice_settings(config) if config else None
 
+    # Build tools list dynamically based on agent capabilities.
+    agent_tools = [send_sms]
+    if config and config.get("can_book_appointments", True):
+        agent_tools += [check_availability, book_appointment]
+
+    userdata = {
+        "agent_id": agent_id or "",
+        "timezone": config.get("timezone", "UTC") if config else "UTC",
+    }
+
     session = AgentSession(
         stt=create_stt(),
         llm=create_llm(system_prompt),
         tts=create_tts(voice_settings),
-        userdata={"agent_id": agent_id or ""},
+        userdata=userdata,
     )
 
-    agent = DentalReceptionist(instructions=system_prompt)
+    agent = DentalReceptionist(instructions=system_prompt, tools=agent_tools)
 
     call_start = time.monotonic()
 
