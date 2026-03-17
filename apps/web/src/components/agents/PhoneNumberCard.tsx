@@ -2,7 +2,20 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { toast } from 'sonner'
+import { formatPhone } from '@/lib/format-utils'
+
+interface PoolNumber {
+  id: string
+  number: string
+  areaCode: string | null
+}
+
+interface OtherAgent {
+  id: string
+  name: string
+}
 
 interface PhoneNumberCardProps {
   agentId: string
@@ -10,47 +23,42 @@ interface PhoneNumberCardProps {
   phoneNumberSource: string | null
   isActive: boolean
   canProvision: boolean
+  poolNumbers?: PoolNumber[]
+  otherAgentsWithoutNumber?: OtherAgent[]
 }
 
-/** Strips formatting, validates E.164-like pattern: + followed by 7-15 digits */
-function normalizePhone(raw: string): string | null {
-  const digits = raw.replace(/[\s\-().]/g, '')
-  if (/^\+?\d{7,15}$/.test(digits)) {
-    return digits.startsWith('+') ? digits : `+${digits}`
-  }
-  return null
-}
-
-/** Format E.164 number to readable US format if applicable */
-function formatPhone(number: string): string {
-  const match = number.match(/^\+1(\d{3})(\d{3})(\d{4})$/)
-  if (match) return `+1 (${match[1]}) ${match[2]}-${match[3]}`
-  return number
-}
-
-export function PhoneNumberCard({ agentId, phoneNumber, phoneNumberSource, isActive, canProvision }: PhoneNumberCardProps) {
+export function PhoneNumberCard({
+  agentId,
+  phoneNumber,
+  phoneNumberSource,
+  isActive,
+  canProvision,
+  poolNumbers = [],
+  otherAgentsWithoutNumber = [],
+}: PhoneNumberCardProps) {
   const router = useRouter()
   const [isProvisioning, setIsProvisioning] = useState(false)
   const [isReleasing, setIsReleasing] = useState(false)
   const [confirmRelease, setConfirmRelease] = useState(false)
-  const [showManual, setShowManual] = useState(false)
-  const [manualPhone, setManualPhone] = useState('')
-  const [manualError, setManualError] = useState('')
-  const [isSavingManual, setIsSavingManual] = useState(false)
+  const [showPoolPicker, setShowPoolPicker] = useState(false)
+  const [showReassign, setShowReassign] = useState(false)
+  const [isReassigning, setIsReassigning] = useState(false)
 
-  async function handleProvision() {
+  async function handleProvision(poolNumberId?: string) {
     setIsProvisioning(true)
     try {
       const res = await fetch(`/api/agents/${agentId}/provision-number`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ poolNumberId }),
       })
       if (!res.ok) {
         const data = (await res.json()) as { error?: string }
         throw new Error(data.error ?? 'Failed to provision number')
       }
-      toast.success('Phone number provisioned!')
+      const result = (await res.json()) as { fromPool?: boolean }
+      toast.success(result.fromPool ? 'Number assigned from pool!' : 'Phone number provisioned!')
+      setShowPoolPicker(false)
       router.refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Something went wrong')
@@ -69,7 +77,7 @@ export function PhoneNumberCard({ agentId, phoneNumber, phoneNumberSource, isAct
         const data = (await res.json()) as { error?: string }
         throw new Error(data.error ?? 'Failed to release number')
       }
-      toast.success('Phone number released')
+      toast.success('Phone number released to pool')
       setConfirmRelease(false)
       router.refresh()
     } catch (err) {
@@ -79,31 +87,26 @@ export function PhoneNumberCard({ agentId, phoneNumber, phoneNumberSource, isAct
     }
   }
 
-  async function handleManualSave() {
-    const normalized = normalizePhone(manualPhone)
-    if (!normalized) {
-      setManualError('Enter a valid phone number, e.g. +15551234567')
-      return
-    }
-    setManualError('')
-    setIsSavingManual(true)
+  async function handleReassign(toAgentId: string) {
+    if (!phoneNumber) return
+    setIsReassigning(true)
     try {
-      const res = await fetch(`/api/agents/${agentId}`, {
-        method: 'PUT',
+      const res = await fetch('/api/phone-numbers/reassign', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: normalized, phoneNumberSource: 'manual' }),
+        body: JSON.stringify({ agentId, toAgentId }),
       })
       if (!res.ok) {
         const data = (await res.json()) as { error?: string }
-        throw new Error(data.error ?? 'Failed to update')
+        throw new Error(data.error ?? 'Failed to reassign number')
       }
-      toast.success('Phone number saved')
-      setShowManual(false)
+      toast.success('Number moved to other agent!')
+      setShowReassign(false)
       router.refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
-      setIsSavingManual(false)
+      setIsReassigning(false)
     }
   }
 
@@ -131,11 +134,6 @@ export function PhoneNumberCard({ agentId, phoneNumber, phoneNumberSource, isAct
               Provisioned
             </span>
           )}
-          {phoneNumberSource === 'manual' && (
-            <span className="text-xs bg-muted/15 text-muted px-2 py-0.5 rounded-full font-medium">
-              Your number
-            </span>
-          )}
         </div>
         <div className="flex items-center justify-between">
           <p className="text-ink text-sm font-medium">{formatPhone(phoneNumber)}</p>
@@ -143,16 +141,14 @@ export function PhoneNumberCard({ agentId, phoneNumber, phoneNumberSource, isAct
             <p className="text-xs text-muted">Deactivate agent to change number</p>
           ) : (
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => {
-                  // Clear number to go back to "no number" state
-                  setShowManual(true)
-                  setManualPhone(phoneNumber)
-                }}
-                className="text-xs text-accent hover:text-accent/80 font-medium transition-colors"
-              >
-                Change
-              </button>
+              {phoneNumberSource === 'provisioned' && otherAgentsWithoutNumber.length > 0 && (
+                <button
+                  onClick={() => setShowReassign(!showReassign)}
+                  className="text-xs text-accent hover:text-accent/80 font-medium transition-colors"
+                >
+                  Move
+                </button>
+              )}
               {confirmRelease ? (
                 <span className="flex items-center gap-2">
                   <button
@@ -181,33 +177,28 @@ export function PhoneNumberCard({ agentId, phoneNumber, phoneNumberSource, isAct
           )}
         </div>
 
-        {/* Inline manual edit when "Change" is clicked */}
-        {showManual && !isActive && (
+        {/* Reassign picker */}
+        {showReassign && !isActive && (
           <div className="mt-3 pt-3 border-t border-border">
-            <div className="flex items-center gap-2">
-              <input
-                type="tel"
-                value={manualPhone}
-                onChange={(e) => { setManualPhone(e.target.value); setManualError('') }}
-                placeholder="+15551234567"
-                className={`px-2 py-1 border rounded-lg bg-white text-ink text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none w-40 ${manualError ? 'border-red-400' : 'border-border'}`}
-                autoFocus
-              />
+            <p className="text-xs text-muted mb-2">Move this number to:</p>
+            <div className="flex flex-wrap gap-2">
+              {otherAgentsWithoutNumber.map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => void handleReassign(a.id)}
+                  disabled={isReassigning}
+                  className="text-xs bg-cream hover:bg-border/50 text-ink px-3 py-1.5 rounded-lg border border-border font-medium transition-colors disabled:opacity-50"
+                >
+                  {a.name}
+                </button>
+              ))}
               <button
-                onClick={() => void handleManualSave()}
-                disabled={isSavingManual}
-                className="text-xs text-accent hover:text-accent/80 font-medium disabled:opacity-50"
-              >
-                {isSavingManual ? 'Saving...' : 'Save'}
-              </button>
-              <button
-                onClick={() => { setShowManual(false); setManualPhone(''); setManualError('') }}
-                className="text-xs text-muted hover:text-ink font-medium"
+                onClick={() => setShowReassign(false)}
+                className="text-xs text-muted hover:text-ink font-medium px-2"
               >
                 Cancel
               </button>
             </div>
-            {manualError && <p className="text-xs text-red-500 mt-1">{manualError}</p>}
           </div>
         )}
       </div>
@@ -219,50 +210,63 @@ export function PhoneNumberCard({ agentId, phoneNumber, phoneNumberSource, isAct
     <div id="phone-number-section" className="bg-white rounded-xl border border-border p-5">
       <p className="text-xs text-muted font-medium mb-3">Phone Number</p>
 
-      {showManual || !canProvision ? (
+      {/* Pool number picker */}
+      {showPoolPicker && poolNumbers.length > 0 ? (
         <div>
-          <div className="flex items-center gap-2">
-            <input
-              type="tel"
-              value={manualPhone}
-              onChange={(e) => { setManualPhone(e.target.value); setManualError('') }}
-              placeholder="+15551234567"
-              className={`px-2 py-1 border rounded-lg bg-white text-ink text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none w-40 ${manualError ? 'border-red-400' : 'border-border'}`}
-              autoFocus={showManual}
-            />
-            <button
-              onClick={() => void handleManualSave()}
-              disabled={isSavingManual}
-              className="text-xs text-accent hover:text-accent/80 font-medium disabled:opacity-50"
-            >
-              {isSavingManual ? 'Saving...' : 'Save'}
-            </button>
-            {canProvision && showManual && (
+          <p className="text-xs text-muted mb-2">Available numbers from your pool:</p>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {poolNumbers.map((pn) => (
               <button
-                onClick={() => { setShowManual(false); setManualPhone(''); setManualError('') }}
-                className="text-xs text-muted hover:text-ink font-medium"
+                key={pn.id}
+                onClick={() => void handleProvision(pn.id)}
+                className="text-xs bg-cream hover:bg-border/50 text-ink px-3 py-1.5 rounded-lg border border-border font-medium transition-colors"
               >
-                Cancel
+                {formatPhone(pn.number)}
               </button>
-            )}
+            ))}
           </div>
-          {manualError && <p className="text-xs text-red-500 mt-1">{manualError}</p>}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => void handleProvision()}
+              className="text-xs text-accent hover:text-accent/80 font-medium transition-colors"
+            >
+              Get a new number instead
+            </button>
+            <button
+              onClick={() => setShowPoolPicker(false)}
+              className="text-xs text-muted hover:text-ink font-medium transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
+      ) : !canProvision ? (
+        <p className="text-sm text-muted">
+          Phone provisioning is not available. Please contact support.
+        </p>
       ) : (
-        <div className="flex items-center gap-3">
+        <div className="space-y-2">
           <button
-            onClick={() => void handleProvision()}
+            onClick={() => {
+              if (poolNumbers.length > 0) {
+                setShowPoolPicker(true)
+              } else {
+                void handleProvision()
+              }
+            }}
             className="bg-accent text-white px-4 py-2 rounded-lg text-sm hover:bg-accent/90 font-medium transition-colors"
           >
             Get a phone number
           </button>
-          <span className="text-xs text-muted">or</span>
-          <button
-            onClick={() => setShowManual(true)}
-            className="text-xs text-accent hover:text-accent/80 font-medium transition-colors"
-          >
-            I have my own number
-          </button>
+          <div className="text-xs text-muted">
+            or{' '}
+            <Link
+              href={`/dashboard/voice-agents/${agentId}/choose-number`}
+              className="text-accent hover:text-accent/80 font-medium transition-colors"
+            >
+              Browse &amp; choose a number →
+            </Link>
+          </div>
         </div>
       )}
     </div>

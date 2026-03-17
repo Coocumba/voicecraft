@@ -18,10 +18,34 @@ interface TwilioMessageResponse {
 interface TwilioAvailableNumber {
   phone_number: string
   sid?: string
+  friendly_name?: string
+  locality?: string
+  region?: string
+  postal_code?: string
 }
 
 interface TwilioAvailableNumbersResponse {
   available_phone_numbers?: TwilioAvailableNumber[]
+}
+
+// ---------------------------------------------------------------------------
+// Public types for number search
+// ---------------------------------------------------------------------------
+
+export interface TwilioSearchParams {
+  areaCode?: string
+  contains?: string     // Vanity pattern — will be wrapped with * wildcards
+  locality?: string     // City name
+  region?: string       // 2-letter state code
+  limit?: number        // 1-30, default 20
+}
+
+export interface AvailableNumber {
+  phoneNumber: string       // E.164
+  friendlyName: string      // Twilio display name
+  locality: string | null
+  region: string | null
+  postalCode: string | null
 }
 
 interface TwilioPurchasedNumberResponse {
@@ -185,6 +209,69 @@ export async function releasePhoneNumber(numberSid: string): Promise<void> {
     const text = await res.text()
     throw new Error(`Twilio number release failed (${res.status}): ${text}`)
   }
+}
+
+/**
+ * Search for available US phone numbers on Twilio without purchasing.
+ */
+export async function searchAvailableNumbers(
+  params: TwilioSearchParams
+): Promise<AvailableNumber[]> {
+  const limit = Math.min(Math.max(params.limit ?? 20, 1), 30)
+  const searchParams = new URLSearchParams({ Limit: String(limit) })
+
+  if (params.areaCode) searchParams.set("AreaCode", params.areaCode)
+  if (params.contains) searchParams.set("Contains", params.contains)
+  if (params.locality) searchParams.set("InLocality", params.locality)
+  if (params.region) searchParams.set("InRegion", params.region)
+
+  const url = `${twilioBaseUrl()}/AvailablePhoneNumbers/US/Local.json?${searchParams.toString()}`
+  const res = await fetch(url, {
+    headers: { Authorization: twilioBasicAuth() },
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Twilio number search failed (${res.status}): ${text}`)
+  }
+
+  const data = (await res.json()) as TwilioAvailableNumbersResponse
+  const available = data.available_phone_numbers ?? []
+
+  return available.map((n) => ({
+    phoneNumber: n.phone_number,
+    friendlyName: n.friendly_name ?? n.phone_number,
+    locality: n.locality ?? null,
+    region: n.region ?? null,
+    postalCode: n.postal_code ?? null,
+  }))
+}
+
+/**
+ * Purchase a specific phone number by its E.164 value.
+ * Used after the user selects a number from search results.
+ */
+export async function purchaseSpecificNumber(
+  phoneNumber: string
+): Promise<{ phoneNumber: string; sid: string }> {
+  const purchaseParams = new URLSearchParams({ PhoneNumber: phoneNumber })
+
+  const res = await fetch(`${twilioBaseUrl()}/IncomingPhoneNumbers.json`, {
+    method: "POST",
+    headers: {
+      Authorization: twilioBasicAuth(),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: purchaseParams.toString(),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Twilio number purchase failed (${res.status}): ${text}`)
+  }
+
+  const purchased = (await res.json()) as TwilioPurchasedNumberResponse
+  return { phoneNumber: purchased.phone_number, sid: purchased.sid }
 }
 
 /**
