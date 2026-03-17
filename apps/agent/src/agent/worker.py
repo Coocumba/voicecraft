@@ -121,6 +121,49 @@ async def _log_call(
         logger.error("call_log_error", error=str(exc))
 
 
+# OpenAI TTS voice mapping by gender and style
+_VOICE_MAP: dict[str, dict[str, str]] = {
+    "female": {
+        "warm": "shimmer",
+        "calm": "nova",
+        "energetic": "nova",
+        "default": "shimmer",
+    },
+    "male": {
+        "warm": "echo",
+        "calm": "onyx",
+        "energetic": "fable",
+        "default": "echo",
+    },
+}
+
+
+def _resolve_voice_settings(config: dict[str, Any]) -> dict[str, Any] | None:
+    """Resolve voice settings from config, mapping gender/style to TTS voice names.
+
+    Priority:
+    1. Explicit voiceSettings (set via dashboard) — used as-is
+    2. voice.gender + voice.style from builder config — mapped to OpenAI voice names
+    """
+    # Check for explicit voiceSettings first (DB field, set via dashboard)
+    explicit = config.get("voiceSettings")
+    if isinstance(explicit, dict) and explicit.get("voice"):
+        return explicit
+
+    # Fall back to builder-generated voice config: { gender: "female", style: "warm" }
+    voice_config = config.get("voice")
+    if not isinstance(voice_config, dict):
+        return None
+
+    gender = str(voice_config.get("gender", "female")).lower()
+    style = str(voice_config.get("style", "default")).lower()
+
+    gender_map = _VOICE_MAP.get(gender, _VOICE_MAP["female"])
+    voice_name = gender_map.get(style, gender_map["default"])
+
+    return {"provider": "openai", "voice": voice_name}
+
+
 server = AgentServer()
 
 
@@ -153,7 +196,9 @@ async def entrypoint(ctx: JobContext) -> None:
     # -- Build session components -----------------------------------------------
     system_prompt = build_system_prompt(config)
     greeting = get_greeting(config)
-    voice_settings = config.get("voiceSettings") if config else None
+    # Voice settings: prefer explicit voiceSettings (DB field), fall back to
+    # voice config from the builder (gender/style), and map to TTS voice names.
+    voice_settings = _resolve_voice_settings(config) if config else None
 
     session = AgentSession(
         stt=create_stt(),
