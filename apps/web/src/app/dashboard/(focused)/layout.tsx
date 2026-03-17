@@ -4,7 +4,7 @@ export default function FocusedLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col min-h-screen bg-cream">
+    <div className="flex flex-col h-screen bg-cream overflow-hidden">
       {children}
     </div>
   )

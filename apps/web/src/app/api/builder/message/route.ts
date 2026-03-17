@@ -147,8 +147,15 @@ export async function POST(request: Request) {
     const userMessageCount = existingMessages.filter((m) => m.role === "user").length
     const topicsCovered = Math.min(userMessageCount, 5)
 
-    // Ready when AI's response contains the readiness signal
+    // Ready when AI's response contains the [READY] tag
     const ready = assistantMessage.content.includes(BUILDER_READY_SIGNAL)
+
+    // Strip the [READY] tag from the message before saving/returning
+    if (ready) {
+      assistantMessage.content = assistantMessage.content
+        .replace(/\[READY\]/g, '')
+        .trim()
+    }
 
     // Merge both updates into a single write to eliminate the race window between
     // saving messages and marking the conversation COMPLETED.
