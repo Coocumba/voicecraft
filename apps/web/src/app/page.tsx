@@ -73,64 +73,61 @@ export default async function LandingPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-border">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="font-serif text-lg text-ink flex-shrink-0 mr-2">
+      <header className="sticky top-0 z-10 border-b border-border bg-cream">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+          <Link href="/" className="font-serif text-lg text-ink flex-shrink-0">
             VoiceCraft
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1 flex-1">
-            <a href="#features" className="px-3 py-1.5 rounded-lg text-sm text-muted hover:text-ink hover:bg-cream transition-colors">
+          <nav className="flex items-center gap-1">
+            <a href="#features" className="hidden sm:inline-flex text-sm text-muted hover:text-ink px-2 sm:px-3 py-1.5 rounded-lg transition-colors">
               Features
             </a>
-            <a href="#how-it-works" className="px-3 py-1.5 rounded-lg text-sm text-muted hover:text-ink hover:bg-cream transition-colors">
+            <a href="#how-it-works" className="hidden sm:inline-flex text-sm text-muted hover:text-ink px-2 sm:px-3 py-1.5 rounded-lg transition-colors">
               How it works
             </a>
-          </nav>
-
-          <div className="flex items-center gap-3">
             <Link
               href={ctaHref}
-              className="hidden sm:inline text-sm text-muted hover:text-ink transition-colors"
+              className="hidden sm:inline-flex text-sm text-muted hover:text-ink px-3 py-1.5 rounded-lg transition-colors"
             >
               {signInLabel}
             </Link>
             <Link
               href={ctaHref}
-              className="bg-accent text-white text-sm font-medium px-4 py-1.5 rounded-lg hover:bg-accent/90 transition-colors"
+              className="text-sm bg-accent text-white px-4 py-1.5 rounded-lg hover:bg-accent/90 transition-colors ml-1"
             >
               Get started
             </Link>
-          </div>
+          </nav>
         </div>
       </header>
 
       {/* Hero */}
-      <section className="max-w-4xl mx-auto px-6 pt-20 pb-16 text-center">
-        <div className="inline-flex items-center gap-2 text-xs font-medium text-accent bg-accent/8 border border-accent/20 px-3 py-1.5 rounded-full mb-8">
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 pt-16 sm:pt-20 pb-12 sm:pb-16 text-center">
+        <div className="inline-flex items-center gap-2 text-xs font-medium text-accent bg-accent/8 border border-accent/20 px-3 py-1.5 rounded-full mb-6 sm:mb-8">
           <span className="w-1.5 h-1.5 rounded-full bg-accent" />
           AI-powered · For small businesses · Set up in minutes
         </div>
-        <h1 className="font-serif text-5xl md:text-6xl text-ink leading-tight mb-6">
+        <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl text-ink leading-tight mb-5 sm:mb-6">
           Your AI receptionist that
-          <br />
-          never misses a call
+          <br className="hidden sm:inline" />
+          {" "}never misses a call
         </h1>
-        <p className="text-lg text-muted max-w-xl mx-auto mb-10 leading-relaxed">
+        <p className="text-base sm:text-lg text-muted max-w-xl mx-auto mb-8 sm:mb-10 leading-relaxed">
           VoiceCraft answers your business phone 24/7 — books appointments,
           answers questions, and recognizes returning callers. Your customers
           talk to a friendly voice, not a robot.
         </p>
-        <div className="flex flex-wrap items-center justify-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
             href={ctaHref}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-accent text-white text-sm font-medium rounded-xl hover:bg-accent/90 transition-colors"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-accent text-white text-sm font-medium rounded-xl hover:bg-accent/90 transition-colors"
           >
             {ctaLabel} →
           </Link>
           <a
             href="#how-it-works"
-            className="inline-flex items-center gap-2 px-6 py-3 text-sm text-ink border border-border rounded-xl hover:bg-white transition-colors"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 text-sm text-ink border border-border rounded-xl hover:bg-white transition-colors"
           >
             See how it works →
           </a>
@@ -138,12 +135,12 @@ export default async function LandingPage() {
       </section>
 
       {/* The problem */}
-      <section className="max-w-3xl mx-auto px-6 py-12">
-        <div className="bg-white rounded-2xl border border-border p-8 md:p-10">
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+        <div className="bg-white rounded-2xl border border-border p-6 sm:p-8 md:p-10">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted mb-4">
             Why VoiceCraft exists
           </p>
-          <blockquote className="font-serif text-xl md:text-2xl text-ink leading-relaxed mb-6">
+          <blockquote className="font-serif text-lg sm:text-xl md:text-2xl text-ink leading-relaxed mb-6">
             &ldquo;I&apos;m with a patient. The phone rings. I can&apos;t answer.
             The caller hangs up and books with someone else. By the time I check
             the missed call, they&apos;re gone.&rdquo;
@@ -162,14 +159,14 @@ export default async function LandingPage() {
       </section>
 
       {/* Features */}
-      <section id="features" className="max-w-5xl mx-auto px-6 py-12">
-        <div className="text-center mb-10">
-          <h2 className="font-serif text-3xl text-ink mb-3">
+      <section id="features" className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+        <div className="text-center mb-8 sm:mb-10">
+          <h2 className="font-serif text-2xl sm:text-3xl text-ink mb-3">
             What your AI receptionist can do
           </h2>
-          <p className="text-muted">Built for real businesses, not demos.</p>
+          <p className="text-muted text-sm sm:text-base">Built for real businesses, not demos.</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {features.map((f) => (
             <div
               key={f.title}
@@ -188,12 +185,12 @@ export default async function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="max-w-3xl mx-auto px-6 py-12">
-        <div className="text-center mb-8">
+      <section id="how-it-works" className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+        <div className="text-center mb-6 sm:mb-8">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted mb-3">
             How it works
           </p>
-          <h2 className="font-serif text-3xl text-ink mb-3">
+          <h2 className="font-serif text-2xl sm:text-3xl text-ink mb-3">
             Three steps to a working phone agent
           </h2>
           <p className="text-muted text-sm">
@@ -201,8 +198,8 @@ export default async function LandingPage() {
           </p>
         </div>
         <div className="bg-white rounded-2xl border border-border overflow-hidden">
-          <div className="p-8 md:p-10">
-            <div className="space-y-10">
+          <div className="p-6 sm:p-8 md:p-10">
+            <div className="space-y-8 sm:space-y-10">
               {[
                 {
                   step: "1",
@@ -223,7 +220,7 @@ export default async function LandingPage() {
                     "Share your new number or forward your existing business line. Your AI receptionist answers calls and books appointments.",
                 },
               ].map((item) => (
-                <div key={item.step} className="flex gap-5">
+                <div key={item.step} className="flex gap-4 sm:gap-5">
                   <div className="w-9 h-9 rounded-full bg-accent/8 border border-accent/20 flex items-center justify-center flex-shrink-0">
                     <span className="text-sm font-semibold text-accent">{item.step}</span>
                   </div>
@@ -239,9 +236,9 @@ export default async function LandingPage() {
       </section>
 
       {/* CTA banner */}
-      <section className="max-w-3xl mx-auto px-6 py-12">
-        <div className="bg-ink rounded-2xl px-8 py-14 md:px-10 text-center">
-          <h2 className="font-serif text-3xl text-white mb-4">
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+        <div className="bg-ink rounded-2xl px-6 py-10 sm:px-8 sm:py-14 md:px-10 text-center">
+          <h2 className="font-serif text-2xl sm:text-3xl text-white mb-4">
             Stop missing calls today
           </h2>
           <p className="text-white/60 text-sm mb-8 max-w-md mx-auto leading-relaxed">
@@ -258,7 +255,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="max-w-5xl mx-auto px-6 py-10 border-t border-border">
+      <footer className="max-w-5xl mx-auto px-4 sm:px-6 py-10 border-t border-border">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted">
           <div className="flex items-center flex-wrap justify-center sm:justify-start gap-x-3 gap-y-1">
             <span className="font-serif text-ink">VoiceCraft</span>
