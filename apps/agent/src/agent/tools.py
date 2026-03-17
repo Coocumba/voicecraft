@@ -106,9 +106,11 @@ async def check_availability(
     description of available time slots, or a message explaining unavailability.
 
     Args:
-        date: The requested date in YYYY-MM-DD format or a natural description
-              such as "next Tuesday". Pass exactly what the patient said.
-        service: The dental service requested, e.g. "cleaning", "filling",
+        date: The requested date in YYYY-MM-DD format. You MUST convert whatever
+              the caller says into this format before calling this tool. For
+              example, if today is 2026-03-17 and the caller says "next Friday",
+              pass "2026-03-20". If they say "tomorrow", pass "2026-03-18".
+        service: The service requested, e.g. "cleaning", "filling",
                  "extraction", "crown", or "general checkup".
     """
     agent_id = _get_agent_id(context)
@@ -154,7 +156,8 @@ async def book_appointment(
     Args:
         patient_name: Full name of the patient as they stated it.
         phone: Patient's phone number for confirmation, e.g. "555-867-5309".
-        date: Appointment date in YYYY-MM-DD format or natural description.
+        date: Appointment date in YYYY-MM-DD format. You MUST convert whatever
+              the caller says into this format before calling this tool.
         time: Appointment time, e.g. "2:30 PM" or "14:30".
         service: The service being booked, e.g. "cleaning", "filling".
     """
