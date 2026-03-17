@@ -114,11 +114,13 @@ async def check_availability(
                  "extraction", "crown", or "general checkup".
     """
     agent_id = _get_agent_id(context)
+    userdata = getattr(context, "userdata", None)
+    timezone = userdata.get("timezone", "UTC") if isinstance(userdata, dict) else "UTC"
     log_ctx = {"date": date, "service": service, "agent_id": agent_id}
     try:
         data = await _post(
             "/api/webhooks/availability",
-            {"agentId": agent_id, "date": date, "service": service},
+            {"agentId": agent_id, "date": date, "service": service, "timezone": timezone},
             log_ctx,
         )
         # The Next.js handler should return {"slots": [...], "message": "..."}
