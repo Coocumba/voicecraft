@@ -62,7 +62,7 @@ voicecraft/
 
 ### Database
 
-Postgres via Prisma with the following models: `User`, `Agent`, `Call`, `Appointment`, `BuilderConversation`, `Integration`.
+Postgres via Prisma with the following models: `User`, `Agent`, `Call`, `Appointment`, `BuilderConversation`, `Integration`, `PhoneNumber`.
 
 ### API Routes
 
@@ -75,7 +75,10 @@ Postgres via Prisma with the following models: `User`, `Agent`, `Call`, `Appoint
 | `POST /api/webhooks/book` | Book appointments (called by voice agent) |
 | `POST /api/webhooks/send-sms` | Send SMS confirmations via Twilio |
 | `POST /api/webhooks/twilio-voice` | Inbound call routing — returns TwiML to forward calls to LiveKit |
-| `POST /api/agents/[id]/provision-number` | Provision/release Twilio phone numbers for agents |
+| `POST /api/agents/[id]/provision-number` | Assign a pooled number to an agent or release it back to the pool |
+| `GET /api/phone-numbers` | List user's available pool numbers |
+| `POST /api/phone-numbers/reassign` | Move a number between the user's agents |
+| `POST /api/phone-numbers/cleanup` | Trigger stale number cleanup (API-key protected) |
 | `GET /api/livekit/token` | Generate LiveKit room tokens |
 | `GET /api/integrations/google` | Google Calendar OAuth callback |
 
@@ -226,7 +229,7 @@ TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TWILIO_AUTH_TOKEN=your_auth_token_here
 ```
 
-With just these two variables, **one-click phone number provisioning** is enabled in the dashboard. VoiceCraft buys numbers from your Twilio account and assigns them to customer agents automatically.
+With just these two variables, **one-click phone number provisioning** is enabled in the dashboard. VoiceCraft maintains a pool of Twilio numbers and assigns them to agents on demand — numbers are recycled back to the pool when an agent is deleted rather than released from Twilio, reducing provisioning costs and latency.
 
 ### 4. SIP credentials for call routing
 

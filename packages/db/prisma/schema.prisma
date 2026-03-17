@@ -16,6 +16,7 @@ model User {
   conversations BuilderConversation[]
   integrations  Integration[]
   contacts      Contact[]
+  phoneNumbers  PhoneNumber[]
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
 }
@@ -38,6 +39,7 @@ model Agent {
   conversation      BuilderConversation? @relation(fields: [conversationId], references: [id])
   calls             Call[]
   appointments      Appointment[]
+  poolNumber        PhoneNumber?
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
 
@@ -146,6 +148,33 @@ model Contact {
 
   @@unique([userId, phone])
   @@index([userId])
+}
+
+enum PhoneNumberStatus {
+  AVAILABLE
+  ASSIGNED
+}
+
+model PhoneNumber {
+  id          String            @id @default(cuid())
+  number      String            @unique // E.164
+  twilioSid   String            @unique
+  areaCode    String?
+  status      PhoneNumberStatus @default(AVAILABLE)
+  agentId     String?           @unique
+  agent       Agent?            @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  userId      String?
+  user        User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  purchasedAt DateTime          @default(now())
+  assignedAt  DateTime?
+  releasedAt  DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([status])
+  @@index([areaCode, status])
+  @@index([userId, status])
+  @@index([releasedAt])
 }
 
 enum IntegrationProvider {

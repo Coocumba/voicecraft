@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
-import { prisma, AgentStatus, CallOutcome } from '@voicecraft/db'
+import { prisma, AgentStatus, CallOutcome, PhoneNumberStatus } from '@voicecraft/db'
 import { formatDate, formatDateTime, formatDuration } from '@/lib/date-utils'
 import { canProvisionNumbers } from '@/lib/twilio'
 import { DeployButton } from '@/components/agents/DeployButton'
@@ -9,6 +9,7 @@ import { PhoneNumberCard } from '@/components/agents/PhoneNumberCard'
 import { GuidedNextSteps } from '@/components/agents/GuidedNextSteps'
 import { CollapsibleConfig } from '@/components/agents/CollapsibleConfig'
 import { DeleteAgentButton } from '@/components/agents/DeleteAgentButton'
+import { CallForwardingGuide } from '@/components/agents/CallForwardingGuide'
 import type { AgentConfig } from '@/lib/builder-types'
 
 interface PageProps {
@@ -61,7 +62,7 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
   const { id } = await params
   const { new: isNew, tested: isTested } = await searchParams
 
-  const [agent, escalatedCount] = await Promise.all([
+  const [agent, escalatedCount, poolNumbers, otherAgentsWithoutNumber] = await Promise.all([
     prisma.agent.findUnique({
       where: { id },
       include: {
@@ -71,6 +72,15 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
     }),
     prisma.call.count({
       where: { agentId: id, outcome: CallOutcome.ESCALATED },
+    }),
+    prisma.phoneNumber.findMany({
+      where: { userId: session.user.id, status: PhoneNumberStatus.AVAILABLE },
+      select: { id: true, number: true, areaCode: true },
+      orderBy: { releasedAt: 'desc' },
+    }),
+    prisma.agent.findMany({
+      where: { userId: session.user.id, id: { not: id }, phoneNumber: null },
+      select: { id: true, name: true },
     }),
   ])
 
@@ -150,14 +160,22 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
       </div>
 
       {/* Phone number */}
-      <div className="mb-8">
+      <div className="mb-8 space-y-4">
         <PhoneNumberCard
           agentId={agent.id}
           phoneNumber={agent.phoneNumber}
           phoneNumberSource={agent.phoneNumberSource}
           isActive={agent.status === AgentStatus.ACTIVE}
           canProvision={canProvisionNumbers()}
+          poolNumbers={poolNumbers}
+          otherAgentsWithoutNumber={otherAgentsWithoutNumber}
         />
+        {agent.phoneNumber && agent.phoneNumberSource === 'provisioned' && (
+          <CallForwardingGuide
+            voicecraftNumber={agent.phoneNumber}
+            agentId={agent.id}
+          />
+        )}
       </div>
 
       {/* Collapsible config */}

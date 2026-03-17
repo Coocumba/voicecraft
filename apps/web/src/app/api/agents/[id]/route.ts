@@ -1,6 +1,6 @@
 import { auth } from "@/auth"
 import { prisma, AgentStatus } from "@voicecraft/db"
-import { releasePhoneNumber } from "@/lib/twilio"
+import { releaseNumber } from "@/lib/phone-pool"
 import { SipClient } from "livekit-server-sdk"
 
 interface RouteContext {
@@ -145,13 +145,13 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
       return Response.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    // Release provisioned Twilio number
+    // Soft-release provisioned number back to pool
     if (existing.phoneNumberSource === "provisioned" && existing.phoneNumberSid) {
       try {
-        await releasePhoneNumber(existing.phoneNumberSid)
-        console.info("[DELETE /api/agents/:id] Released Twilio number", { sid: existing.phoneNumberSid })
+        await releaseNumber(existing.id)
+        console.info("[DELETE /api/agents/:id] Soft-released number to pool", { sid: existing.phoneNumberSid })
       } catch (err) {
-        console.error("[DELETE /api/agents/:id] Failed to release Twilio number", err)
+        console.error("[DELETE /api/agents/:id] Failed to release number to pool", err)
       }
     }
 
