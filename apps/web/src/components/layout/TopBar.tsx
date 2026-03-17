@@ -13,6 +13,9 @@ interface TopBarProps {
 
 const services = [
   { label: 'Voice Agents', href: '/dashboard/voice-agents', available: true },
+  { label: 'Appointments', href: '/dashboard/appointments', available: true },
+  { label: 'Calls', href: '/dashboard/calls', available: true },
+  { label: 'Contacts', href: '/dashboard/contacts', available: true },
   { label: 'SMS Bot', href: '#', available: false },
   { label: 'Chat Widget', href: '#', available: false },
 ]

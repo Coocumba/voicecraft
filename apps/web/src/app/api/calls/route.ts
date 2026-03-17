@@ -17,16 +17,27 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const limitParam = searchParams.get("limit")
   const cursorParam = searchParams.get("cursor")
+  const agentIdParam = searchParams.get("agentId")
+  const outcomeParam = searchParams.get("outcome")
 
   const limit = limitParam ? Math.min(parseInt(limitParam, 10), 100) : 20
   if (isNaN(limit) || limit < 1) {
     return Response.json({ error: "Invalid limit parameter" }, { status: 400 })
   }
 
+  if (outcomeParam !== null && !isValidOutcome(outcomeParam)) {
+    return Response.json(
+      { error: `outcome must be one of: ${VALID_OUTCOMES.join(", ")}` },
+      { status: 400 }
+    )
+  }
+
   try {
     const calls = await prisma.call.findMany({
       where: {
         agent: { userId: session.user.id },
+        ...(agentIdParam ? { agentId: agentIdParam } : {}),
+        ...(outcomeParam ? { outcome: outcomeParam as CallOutcome } : {}),
       },
       include: {
         agent: { select: { id: true, name: true, businessName: true } },
@@ -41,7 +52,40 @@ export async function GET(request: Request) {
     const lastItem = items[items.length - 1]
     const nextCursor = hasNextPage && lastItem ? lastItem.id : null
 
-    return Response.json({ calls: items, nextCursor })
+    // Batch-look up contacts for all calls that have a callerNumber
+    const phoneNumbers = [
+      ...new Set(
+        items
+          .map((c) => c.callerNumber)
+          .filter((p): p is string => p !== null && p !== undefined)
+      ),
+    ]
+
+    const contacts =
+      phoneNumbers.length > 0
+        ? await prisma.contact.findMany({
+            where: {
+              userId: session.user.id,
+              phone: { in: phoneNumbers },
+            },
+            select: { phone: true, name: true, callCount: true },
+          })
+        : []
+
+    const contactByPhone = new Map(contacts.map((c) => [c.phone, c]))
+
+    const callsWithContact = items.map((call) => {
+      const contact = call.callerNumber
+        ? (contactByPhone.get(call.callerNumber) ?? null)
+        : null
+      return {
+        ...call,
+        contactName: contact?.name ?? null,
+        isReturningCaller: (contact?.callCount ?? 0) > 1,
+      }
+    })
+
+    return Response.json({ calls: callsWithContact, nextCursor })
   } catch (err) {
     console.error("[GET /api/calls]", err)
     return Response.json({ error: "Internal server error" }, { status: 500 })
@@ -98,6 +142,28 @@ export async function POST(request: Request) {
         summary: typeof summary === "string" ? summary : undefined,
       },
     })
+
+    // Fire-and-forget contact upsert — does not block the response
+    if (typeof callerNumber === "string" && callerNumber.trim() !== "") {
+      const phone = callerNumber.trim()
+      prisma.contact
+        .upsert({
+          where: { userId_phone: { userId: agent.userId, phone } },
+          update: {
+            callCount: { increment: 1 },
+            lastCalledAt: new Date(),
+          },
+          create: {
+            userId: agent.userId,
+            phone,
+            callCount: 1,
+            lastCalledAt: new Date(),
+          },
+        })
+        .catch((err: unknown) => {
+          console.error("[POST /api/calls] contact upsert failed", err)
+        })
+    }
 
     return Response.json({ call }, { status: 201 })
   } catch (err) {

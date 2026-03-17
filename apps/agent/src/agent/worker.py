@@ -34,7 +34,7 @@ from livekit.agents import AgentServer, AgentSession, Agent, JobContext, cli
 
 from src.agent.config_loader import load_agent_config
 from src.agent.plugins import create_stt, create_llm, create_tts
-from src.agent.prompts import build_system_prompt, get_greeting
+from src.agent.prompts import build_caller_context_suffix, build_system_prompt, get_greeting
 from src.agent.tools import book_appointment, check_availability, send_sms
 
 _WEB_URL = os.environ.get("VOICECRAFT_WEB_URL", "http://localhost:3000").rstrip("/")
@@ -164,6 +164,39 @@ def _resolve_voice_settings(config: dict[str, Any]) -> dict[str, Any] | None:
     return {"provider": "openai", "voice": voice_name}
 
 
+async def _lookup_contact(agent_id: str, phone: str) -> dict[str, Any] | None:
+    """Look up a contact by phone number via the contact-lookup webhook.
+
+    Returns the contact dict on a successful hit, or None on a miss or any
+    error. This is intentionally fire-and-forget: a failed lookup must never
+    prevent the call from proceeding.
+
+    Timeout is deliberately short (3 s total) so a slow API does not delay
+    call pickup.
+
+    Note: phone numbers and contact names are never logged — only outcome tags
+    ("contact_found" / "contact_not_found") to avoid emitting PII.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(3.0)) as client:
+            resp = await client.post(
+                f"{_WEB_URL}/api/webhooks/contact-lookup",
+                json={"agentId": agent_id, "phone": phone},
+                headers={"x-api-key": _API_KEY, "Content-Type": "application/json"},
+            )
+        if resp.status_code == 200:
+            data: dict[str, Any] = resp.json()
+            if data.get("found"):
+                logger.info("contact_found", agent_id=agent_id)
+                return data.get("contact")
+    except Exception as exc:
+        logger.warning("contact_lookup_failed", error=str(exc))
+        return None
+
+    logger.debug("contact_not_found", agent_id=agent_id)
+    return None
+
+
 server = AgentServer()
 
 
@@ -193,9 +226,29 @@ async def entrypoint(ctx: JobContext) -> None:
             detail="falling back to default dental receptionist config",
         )
 
+    # -- Identify caller early so we can personalise the session ----------------
+    # Extract caller number from SIP participant attributes before any prompt
+    # construction so it's available for both contact lookup and call logging.
+    caller_number: str | None = None
+    for p in ctx.room.remote_participants.values():
+        phone = p.attributes.get("sip.phoneNumber")
+        if phone:
+            caller_number = phone
+            break
+
+    # Contact lookup: fire-and-forget — None on any miss or failure.
+    # Only attempted when both agent_id and caller_number are known.
+    contact: dict[str, Any] | None = None
+    if agent_id and caller_number:
+        contact = await _lookup_contact(agent_id, caller_number)
+
     # -- Build session components -----------------------------------------------
     system_prompt = build_system_prompt(config)
-    greeting = get_greeting(config)
+    if contact:
+        system_prompt += build_caller_context_suffix(contact)
+
+    greeting = get_greeting(config, contact)
+
     # Voice settings: prefer explicit voiceSettings (DB field), fall back to
     # voice config from the builder (gender/style), and map to TTS voice names.
     voice_settings = _resolve_voice_settings(config) if config else None
@@ -210,14 +263,6 @@ async def entrypoint(ctx: JobContext) -> None:
     agent = DentalReceptionist(instructions=system_prompt)
 
     call_start = time.monotonic()
-
-    # Extract caller number from SIP participant attributes
-    caller_number: str | None = None
-    for p in ctx.room.remote_participants.values():
-        phone = p.attributes.get("sip.phoneNumber")
-        if phone:
-            caller_number = phone
-            break
 
     # Log the call when the session shuts down
     import asyncio

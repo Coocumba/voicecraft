@@ -17,4 +17,4 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
 
 export { PrismaClient } from "@prisma/client"
 export { AgentStatus, CallOutcome, AppointmentStatus, ConversationStatus, IntegrationProvider } from "@prisma/client"
-export type { User, Agent, Call, Appointment, BuilderConversation, Integration, Prisma } from "@prisma/client"
+export type { User, Agent, Call, Appointment, BuilderConversation, Integration, Contact, Prisma } from "@prisma/client"

@@ -1,22 +1,218 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface GoogleCalendarStatus {
+  available: boolean
+  connected: boolean
+  email?: string
+}
+
+type DisconnectStep = 'idle' | 'confirming' | 'disconnecting'
+
+// ---------------------------------------------------------------------------
+// GoogleCalendarSection
+// ---------------------------------------------------------------------------
+
+function GoogleCalendarSection() {
+  const [status, setStatus] = useState<GoogleCalendarStatus | null>(null)
+  const [disconnectStep, setDisconnectStep] = useState<DisconnectStep>('idle')
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/integrations/google/status')
+      if (!res.ok) throw new Error('Failed to fetch status')
+      const data = (await res.json()) as GoogleCalendarStatus
+      setStatus(data)
+    } catch {
+      // Non-fatal — leave status as null (treated as loading skeleton)
+      setStatus({ available: false, connected: false })
+    }
+  }, [])
+
+  useEffect(() => {
+    void fetchStatus()
+  }, [fetchStatus])
+
+  async function handleDisconnect() {
+    setDisconnectStep('disconnecting')
+    try {
+      const res = await fetch('/api/integrations/google/disconnect', {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Failed to disconnect')
+      setStatus({ available: false, connected: false })
+      setDisconnectStep('idle')
+      toast.success('Google Calendar disconnected')
+    } catch {
+      setDisconnectStep('idle')
+      toast.error('Could not disconnect. Please try again.')
+    }
+  }
+
+  // Loading skeleton
+  if (status === null) {
+    return (
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <div className="h-4 w-48 rounded bg-border animate-pulse" />
+          <div className="h-3 w-64 rounded bg-border animate-pulse" />
+        </div>
+        <div className="h-8 w-32 rounded-lg bg-border animate-pulse" />
+      </div>
+    )
+  }
+
+  // Connected state
+  if (status.connected) {
+    return (
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-success shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium text-success">Connected</span>
+          </div>
+          {status.email && (
+            <p className="text-xs text-muted">{status.email}</p>
+          )}
+          <p className="text-xs text-muted">
+            Appointments booked by your voice agent will appear in this calendar.
+          </p>
+        </div>
+
+        <div className="shrink-0">
+          {disconnectStep === 'idle' && (
+            <button
+              onClick={() => setDisconnectStep('confirming')}
+              className="text-sm text-muted hover:text-ink underline underline-offset-2 transition-colors"
+            >
+              Disconnect
+            </button>
+          )}
+
+          {disconnectStep === 'confirming' && (
+            <div className="flex items-center gap-3 text-sm">
+              <span className="text-ink">Disconnect?</span>
+              <button
+                onClick={() => void handleDisconnect()}
+                className="font-medium text-red-600 hover:text-red-700 transition-colors"
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => setDisconnectStep('idle')}
+                className="text-muted hover:text-ink transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {disconnectStep === 'disconnecting' && (
+            <span className="text-sm text-muted">Disconnecting…</span>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Not available — server doesn't have Google OAuth configured
+  if (!status.available) {
+    return (
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-sm text-ink">Connect your Google Calendar</p>
+          <p className="text-xs text-muted">
+            Automatically add booked appointments to your calendar.
+          </p>
+        </div>
+        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-muted/15 text-muted">
+          Coming soon
+        </span>
+      </div>
+    )
+  }
+
+  // Not connected state
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="space-y-1">
+        <p className="text-sm text-ink">Connect your Google Calendar</p>
+        <p className="text-xs text-muted">
+          Automatically add booked appointments to your calendar.
+        </p>
+      </div>
+      <a
+        href="/api/integrations/google"
+        className={cn(
+          'shrink-0 px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+          'bg-accent text-white hover:bg-accent/90'
+        )}
+      >
+        Connect
+      </a>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// SettingsPage
+// ---------------------------------------------------------------------------
 
 export default function SettingsPage() {
   const { data: session, update } = useSession()
   const [name, setName] = useState(session?.user?.name ?? '')
   const [saving, setSaving] = useState(false)
 
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  // Show a toast and clean the URL when Google OAuth redirects back.
+  useEffect(() => {
+    const integration = searchParams.get('integration')
+    const provider = searchParams.get('provider')
+
+    if (provider !== 'google') return
+
+    if (integration === 'success') {
+      toast.success('Google Calendar connected successfully')
+    } else if (integration === 'error') {
+      toast.error('Could not connect Google Calendar. Please try again.')
+    } else {
+      return
+    }
+
+    // Remove query params from the URL without a navigation.
+    const url = new URL(window.location.href)
+    url.searchParams.delete('integration')
+    url.searchParams.delete('provider')
+    router.replace(url.pathname + (url.search || ''), { scroll: false })
+  }, [searchParams, router])
+
+  // Sync name field when session loads.
+  useEffect(() => {
+    if (session?.user?.name) {
+      setName(session.user.name)
+    }
+  }, [session?.user?.name])
+
   const trimmedName = name.trim()
-  const nameError = trimmedName.length === 0
-    ? 'Name is required'
-    : trimmedName.length < 2
-      ? 'Name must be at least 2 characters'
-      : trimmedName.length > 100
-        ? 'Name must be under 100 characters'
-        : null
+  const nameError =
+    trimmedName.length === 0
+      ? 'Name is required'
+      : trimmedName.length < 2
+        ? 'Name must be at least 2 characters'
+        : trimmedName.length > 100
+          ? 'Name must be under 100 characters'
+          : null
 
   async function handleSaveName() {
     if (nameError || saving || trimmedName === session?.user?.name) return
@@ -25,10 +221,10 @@ export default function SettingsPage() {
       const res = await fetch('/api/user/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: trimmedName }),
       })
       if (!res.ok) throw new Error('Failed to update name')
-      await update({ name: name.trim() })
+      await update({ name: trimmedName })
       toast.success('Name updated')
     } catch {
       toast.error('Failed to update name')
@@ -50,7 +246,9 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-4">
             <div>
-              <label htmlFor="name" className="text-sm text-muted block mb-1">Name</label>
+              <label htmlFor="name" className="text-sm text-muted block mb-1">
+                Name
+              </label>
               <div className="flex gap-2">
                 <input
                   id="name"
@@ -82,19 +280,11 @@ export default function SettingsPage() {
         <div className="bg-white rounded-xl border border-border p-6">
           <div className="mb-5">
             <h2 className="font-serif text-base text-ink">Google Calendar</h2>
-            <p className="text-sm text-muted mt-1">Sync booked appointments directly to your calendar.</p>
+            <p className="text-sm text-muted mt-1">
+              Sync booked appointments directly to your calendar.
+            </p>
           </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <p className="text-sm text-ink">Connect your Google Calendar</p>
-              <p className="text-xs text-muted">
-                Automatically create calendar events when appointments are booked by your voice agent.
-              </p>
-            </div>
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-muted/15 text-muted">
-              Coming soon
-            </span>
-          </div>
+          <GoogleCalendarSection />
         </div>
       </div>
     </div>

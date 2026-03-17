@@ -127,16 +127,81 @@ def build_system_prompt(config: dict[str, Any] | None) -> str:
     ).strip()
 
 
-def get_greeting(config: dict[str, Any] | None) -> str:
+def get_greeting(config: dict[str, Any] | None, contact: dict[str, Any] | None = None) -> str:
     """Return the opening greeting the agent should speak to the caller.
+
+    If a known contact is provided, appends an instruction to the LLM to greet
+    them by name. This is directive text for the model, not literal speech.
 
     Args:
         config: Agent config dict, or None to use a generic greeting.
+        contact: Contact info returned by the contact-lookup webhook, or None.
     """
     if config is None:
-        return "Hello! Thank you for calling. How can I help you today?"
+        base_greeting = "Hello! Thank you for calling. How can I help you today?"
+    else:
+        base_greeting = config.get(
+            "greeting",
+            "Hello! Thank you for calling. How can I help you today?",
+        )
 
-    return config.get(
-        "greeting",
-        "Hello! Thank you for calling. How can I help you today?",
-    )
+    if contact and contact.get("name"):
+        base_greeting += (
+            f" (The caller is {contact['name']}, a returning customer"
+            " \u2014 greet them by name.)"
+        )
+
+    return base_greeting
+
+
+def build_caller_context_suffix(contact: dict[str, Any]) -> str:
+    """Build the '## Caller Context' section to append to the system prompt.
+
+    Called only when the contact-lookup webhook returns a match. Keeps all
+    prompt construction logic centralised in this module.
+
+    Args:
+        contact: Contact dict with keys: name (str | None), callCount (int),
+                 lastCalledAt (str | None), recentAppointments (list | None).
+    """
+    name: str | None = contact.get("name")
+    call_count: int = int(contact.get("callCount", 0))
+    last_called_at: str | None = contact.get("lastCalledAt")
+    recent_appointments: list[Any] = contact.get("recentAppointments") or []
+
+    lines: list[str] = ["\n\n## Caller Context"]
+
+    if name:
+        lines.append(
+            f"This caller is a returning customer: {name}."
+        )
+    else:
+        lines.append("This is a returning caller.")
+
+    call_summary = f"They have called {call_count} time{'s' if call_count != 1 else ''}."
+    if last_called_at:
+        call_summary += f" Last call: {last_called_at}."
+    lines.append(call_summary)
+
+    if recent_appointments:
+        # Summarise each appointment entry without assuming a fixed schema —
+        # just render whatever fields are present so the LLM has context.
+        appt_parts: list[str] = []
+        for appt in recent_appointments:
+            if isinstance(appt, dict):
+                appt_parts.append(
+                    ", ".join(f"{k}: {v}" for k, v in appt.items() if v is not None)
+                )
+            else:
+                appt_parts.append(str(appt))
+        if appt_parts:
+            lines.append(
+                "Recent appointments: " + "; ".join(appt_parts) + "."
+            )
+
+    if name:
+        lines.append("Greet them warmly by name and be aware of their history.")
+    else:
+        lines.append("Greet them warmly and be aware of their history.")
+
+    return "\n".join(lines)

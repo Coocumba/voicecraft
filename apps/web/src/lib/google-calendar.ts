@@ -226,6 +226,36 @@ export async function checkAvailability(
 }
 
 /**
+ * Delete a Google Calendar event by ID.
+ * Non-fatal — logs the error but does not throw so callers can continue.
+ */
+export async function deleteCalendarEvent(userId: string, eventId: string): Promise<void> {
+  try {
+    const accessToken = await getValidAccessToken(userId)
+
+    const res = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    )
+
+    // 204 = success, 410 = already deleted — both are acceptable
+    if (!res.ok && res.status !== 410) {
+      const text = await res.text()
+      console.error(
+        `[deleteCalendarEvent] Google Calendar DELETE failed (${res.status}): ${text}`
+      )
+    }
+  } catch (err) {
+    console.error("[deleteCalendarEvent] Error deleting calendar event", err)
+  }
+}
+
+/**
  * Create a Google Calendar event for an appointment and return the event ID.
  */
 export async function bookAppointment(

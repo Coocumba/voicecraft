@@ -15,6 +15,7 @@ model User {
   agents        Agent[]
   conversations BuilderConversation[]
   integrations  Integration[]
+  contacts      Contact[]
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
 }
@@ -127,6 +128,23 @@ model Integration {
   updatedAt    DateTime            @updatedAt
 
   @@unique([userId, provider])
+  @@index([userId])
+}
+
+model Contact {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  phone        String
+  name         String?
+  email        String?
+  notes        String?   @db.Text
+  callCount    Int       @default(0)
+  lastCalledAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, phone])
   @@index([userId])
 }
 
