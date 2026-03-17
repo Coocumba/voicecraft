@@ -1,14 +1,14 @@
 // Webhook called by the LiveKit voice agent to look up a contact by phone number
 // before greeting the caller. Authentication is via VOICECRAFT_API_KEY header.
 
-import { prisma } from "@voicecraft/db"
+import { prisma, AppointmentStatus } from "@voicecraft/db"
 import { withCors, preflightResponse } from "@/lib/cors"
 
 export function OPTIONS(): Response {
   return preflightResponse()
 }
 
-interface RecentAppointment {
+interface AppointmentSummary {
   service: string
   scheduledAt: Date
   status: string
@@ -18,11 +18,15 @@ interface FoundContact {
   name: string | null
   callCount: number
   lastCalledAt: Date | null
-  recentAppointments: RecentAppointment[]
+}
+
+interface AppointmentGroups {
+  upcoming: AppointmentSummary[]
+  past: AppointmentSummary[]
 }
 
 type ContactLookupResponse =
-  | { found: true; contact: FoundContact }
+  | { found: true; contact: FoundContact; appointments: AppointmentGroups }
   | { found: false }
 
 export async function POST(request: Request): Promise<Response> {
@@ -83,21 +87,33 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json(response, { headers: corsHeaders })
     }
 
-    // Fetch the 5 most recent appointments for this phone number across all of
-    // this user's agents, ordered most-recent first.
-    const appointments = await prisma.appointment.findMany({
-      where: {
-        patientPhone: normalizedPhone,
-        agent: { userId: agent.userId },
-      },
-      orderBy: { scheduledAt: "desc" },
-      take: 5,
-      select: {
-        service: true,
-        scheduledAt: true,
-        status: true,
-      },
-    })
+    // Fetch past and upcoming appointments in parallel for this phone number
+    // across all of this user's agents.
+    const now = new Date()
+
+    const [pastAppointments, upcomingAppointments] = await Promise.all([
+      prisma.appointment.findMany({
+        where: {
+          patientPhone: normalizedPhone,
+          agent: { userId: agent.userId },
+          scheduledAt: { lt: now },
+        },
+        orderBy: { scheduledAt: "desc" },
+        take: 3,
+        select: { service: true, scheduledAt: true, status: true },
+      }),
+      prisma.appointment.findMany({
+        where: {
+          patientPhone: normalizedPhone,
+          agent: { userId: agent.userId },
+          scheduledAt: { gte: now },
+          status: AppointmentStatus.BOOKED,
+        },
+        orderBy: { scheduledAt: "asc" },
+        take: 2,
+        select: { service: true, scheduledAt: true, status: true },
+      }),
+    ])
 
     const response: ContactLookupResponse = {
       found: true,
@@ -105,11 +121,10 @@ export async function POST(request: Request): Promise<Response> {
         name: contact.name,
         callCount: contact.callCount,
         lastCalledAt: contact.lastCalledAt,
-        recentAppointments: appointments.map((a) => ({
-          service: a.service,
-          scheduledAt: a.scheduledAt,
-          status: a.status,
-        })),
+      },
+      appointments: {
+        upcoming: upcomingAppointments,
+        past: pastAppointments,
       },
     }
 
