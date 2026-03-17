@@ -33,7 +33,9 @@ Output ONLY a JSON object with no surrounding text, code fences, or explanation.
   "voice": { "gender": "male" | "female", "style": "string" },
   "language": "string",
   "greeting": "string",
-  "escalation_rules": ["string"]
+  "escalation_rules": ["string"],
+  "can_book_appointments": boolean,
+  "timezone": "string | null"
 }
 
 Rules:
@@ -45,6 +47,8 @@ Rules:
 - voice.gender should be "male" or "female". voice.style is a brief descriptor like "warm", "calm", "energetic" (use "warm" as default).
 - If a field cannot be determined from the conversation, use a sensible default (e.g., empty array, "friendly" tone, "female" voice gender, "en" language).
 - Adapt the services list to the actual business type (products, services, offerings, menu items, etc.).
+- Set can_book_appointments to true if the conversation mentions booking, scheduling, appointments, or reservations. Set to false for info-only or message-taking agents.
+- Infer timezone from the business location if mentioned. Use IANA timezone format (e.g. "America/New_York", "Asia/Kolkata"). Set to null if location is unclear.
 - Never add extra keys or wrapper objects.`
 
 export async function POST(request: Request) {
