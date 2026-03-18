@@ -42,7 +42,6 @@ export async function getCalendarEventsForDate(
     return google.getCalendarEventsForDate(userId, date, timezone)
   }
   if (provider === "microsoft") {
-    // @ts-expect-error — microsoft-calendar.ts is created in a subsequent task
     const microsoft = await import("@/lib/microsoft-calendar")
     return microsoft.getCalendarEventsForDate(userId, date, timezone)
   }
@@ -59,7 +58,6 @@ export async function bookAppointment(
     return google.bookAppointment(userId, details)
   }
   if (provider === "microsoft") {
-    // @ts-expect-error — microsoft-calendar.ts is created in a subsequent task
     const microsoft = await import("@/lib/microsoft-calendar")
     return microsoft.bookAppointment(userId, details)
   }
@@ -76,7 +74,6 @@ export async function deleteCalendarEvent(
     return google.deleteCalendarEvent(userId, eventId)
   }
   if (provider === "microsoft") {
-    // @ts-expect-error — microsoft-calendar.ts is created in a subsequent task
     const microsoft = await import("@/lib/microsoft-calendar")
     return microsoft.deleteCalendarEvent(userId, eventId)
   }
