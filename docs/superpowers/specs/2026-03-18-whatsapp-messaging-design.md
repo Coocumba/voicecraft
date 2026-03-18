@@ -280,7 +280,7 @@ For each match:
 The existing split-panel messages UI (conversation list left, thread right) is **unchanged structurally**. Updates required:
 
 - `GET /api/messages` — filter by `agent.whatsappEnabled` instead of `agent.smsEnabled`; include `channel` in response
-- `POST /api/messages/[conversationId]` — owner reply calls `sendWhatsApp()` for `channel = WHATSAPP` conversations
+- `POST /api/messages` — owner reply calls `sendWhatsApp()` for `channel = WHATSAPP` conversations (conversationId in request body)
 - UI — replace SMS icon with WhatsApp icon; no layout changes
 
 ---
