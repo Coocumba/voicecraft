@@ -16,7 +16,7 @@ export function CalendarConnectButtons({
   if (!googleAvailable && !microsoftAvailable) return null
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       {googleAvailable && (
         <a
           href={`/api/integrations/google?returnTo=${encoded}`}
