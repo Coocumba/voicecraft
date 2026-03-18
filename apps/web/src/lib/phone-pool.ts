@@ -284,13 +284,28 @@ export async function getAvailableNumbers(
 }
 
 /**
- * Extract the 3-digit area code from a US E.164 number (+1XXXXXXXXXX).
- * Returns null for any number that does not match the expected US format.
+ * Extract a local area/region code from an E.164 number.
+ * US/Canada (+1): returns 3-digit area code
+ * Other countries: returns first 2-4 digits after country code (or null)
  */
 export function extractAreaCode(e164: string): string | null {
-  // US E.164: "+1" prefix + 10 digits = 12 characters total
-  if (!/^\+1\d{10}$/.test(e164)) return null
-  return e164.slice(2, 5)
+  // US/Canada: "+1" + 10 digits
+  if (/^\+1\d{10}$/.test(e164)) return e164.slice(2, 5)
+
+  // UK: "+44" + 10 digits, area code is first 2-4 digits after 44
+  if (/^\+44\d{10}$/.test(e164)) return e164.slice(3, 7)
+
+  // India: "+91" + 10 digits, no standard area code for mobile
+  if (/^\+91\d{10}$/.test(e164)) return e164.slice(3, 6)
+
+  // Australia: "+61" + 9 digits
+  if (/^\+61\d{9}$/.test(e164)) return e164.slice(3, 5)
+
+  // Generic: try to extract first 3 digits after country code
+  const match = e164.match(/^\+\d{1,3}(\d{3})/)
+  if (match) return match[1] ?? null
+
+  return null
 }
 
 // ---------------------------------------------------------------------------
