@@ -20,7 +20,7 @@ export function CalendarConnectButtons({
       {googleAvailable && (
         <a
           href={`/api/integrations/google?returnTo=${encoded}`}
-          className="inline-flex items-center justify-center flex-1 whitespace-nowrap bg-accent text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors"
+          className="inline-flex items-center justify-center whitespace-nowrap bg-accent text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors"
         >
           Google Calendar
         </a>
@@ -28,7 +28,7 @@ export function CalendarConnectButtons({
       {microsoftAvailable && (
         <a
           href={`/api/integrations/microsoft?returnTo=${encoded}`}
-          className="inline-flex items-center justify-center flex-1 whitespace-nowrap bg-accent text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors"
+          className="inline-flex items-center justify-center whitespace-nowrap bg-accent text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors"
         >
           Microsoft Outlook
         </a>
