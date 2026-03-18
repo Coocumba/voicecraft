@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/auth'
-import { prisma, AgentStatus, CallOutcome, PhoneNumberStatus } from '@voicecraft/db'
+import { prisma, AgentStatus, CallOutcome, PhoneNumberStatus, IntegrationProvider } from '@voicecraft/db'
 import { formatDate, formatDateTime, formatDuration } from '@/lib/date-utils'
 import { canProvisionNumbers } from '@/lib/twilio'
 import { DeployButton } from '@/components/agents/DeployButton'
@@ -62,7 +62,7 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
   const { id } = await params
   const { new: isNew, tested: isTested } = await searchParams
 
-  const [agent, escalatedCount, poolNumbers, otherAgentsWithoutNumber] = await Promise.all([
+  const [agent, escalatedCount, poolNumbers, otherAgentsWithoutNumber, googleCalendarIntegration] = await Promise.all([
     prisma.agent.findUnique({
       where: { id },
       include: {
@@ -82,6 +82,10 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
       where: { userId: session.user.id, id: { not: id }, phoneNumber: null },
       select: { id: true, name: true },
     }),
+    prisma.integration.findFirst({
+      where: { userId: session.user.id, provider: IntegrationProvider.GOOGLE_CALENDAR },
+      select: { id: true },
+    }),
   ])
 
   if (!agent) notFound()
@@ -89,13 +93,15 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
 
   const config = isAgentConfig(agent.config) ? agent.config : null
   const isDraft = agent.status === AgentStatus.DRAFT
+  const hasGoogleCalendar = !!googleCalendarIntegration
+  const needsCalendar = config?.can_book_appointments === true && !hasGoogleCalendar
 
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto">
 
       {/* Guided next steps — shown after creation (?new=true) or after testing (?tested=true) */}
       {(isNew === 'true' || isTested === 'true') && (
-        <GuidedNextSteps agentId={agent.id} agentName={agent.name} hasTested={isTested === 'true'} />
+        <GuidedNextSteps agentId={agent.id} agentName={agent.name} hasTested={isTested === 'true'} needsCalendar={needsCalendar} />
       )}
 
       {/* Header */}
@@ -158,6 +164,19 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
           <p className="font-serif text-3xl text-ink">{escalatedCount}</p>
         </div>
       </div>
+
+      {/* Calendar warning banner */}
+      {needsCalendar && (
+        <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 text-sm text-amber-800 mb-8">
+          <span>Your agent offers placeholder availability because Google Calendar isn&apos;t connected.</span>
+          <a
+            href={`/api/integrations/google?returnTo=${encodeURIComponent(`/dashboard/voice-agents/${agent.id}`)}`}
+            className="text-accent font-medium hover:text-accent/80 transition-colors whitespace-nowrap ml-4"
+          >
+            Connect Google Calendar →
+          </a>
+        </div>
+      )}
 
       {/* Phone number */}
       <div className="mb-8 space-y-4">
