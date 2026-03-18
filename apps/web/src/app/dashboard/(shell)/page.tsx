@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { prisma, AgentStatus } from '@voicecraft/db'
 import { ServiceCard } from '@/components/ui/ServiceCard'
 
+export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Dashboard' }
 
 export default async function DashboardHomePage() {
@@ -21,6 +22,8 @@ export default async function DashboardHomePage() {
   ])
 
   const firstName = session.user?.name?.split(' ')[0] ?? 'there'
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
   const voiceAgentsStats =
     agentCount > 0
@@ -31,7 +34,7 @@ export default async function DashboardHomePage() {
     <div className="p-6 sm:p-8 max-w-5xl mx-auto">
       <div className="mb-8">
         <h1 className="font-serif text-2xl sm:text-3xl text-ink">
-          Good morning, {firstName}
+          {greeting}, {firstName}
         </h1>
         <p className="text-sm text-muted mt-1">What would you like to set up today?</p>
       </div>
