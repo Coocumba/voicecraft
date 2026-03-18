@@ -1,6 +1,8 @@
 import { auth } from "@/auth"
-import { prisma, AppointmentStatus } from "@voicecraft/db"
+import { prisma, AppointmentStatus, IntegrationProvider } from "@voicecraft/db"
 import type { Prisma } from "@voicecraft/db"
+import { bookAppointment } from "@/lib/google-calendar"
+import type { AgentConfig } from "@/lib/builder-types"
 
 const MAX_LIMIT = 100
 const DEFAULT_LIMIT = 20
@@ -135,6 +137,116 @@ export async function GET(request: Request) {
     })
   } catch (err) {
     console.error("[GET /api/appointments]", err)
+    return Response.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+export async function POST(request: Request) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  let body: {
+    agentId?: string
+    service?: string
+    patientName?: string
+    patientPhone?: string
+    scheduledAt?: string
+  }
+
+  try {
+    body = await request.json()
+  } catch {
+    return Response.json({ error: "Invalid JSON body" }, { status: 400 })
+  }
+
+  const { agentId, service, patientName, patientPhone, scheduledAt } = body
+
+  // Validate required fields
+  if (!agentId || !service || !patientName || !scheduledAt) {
+    return Response.json(
+      { error: "agentId, service, patientName, and scheduledAt are required" },
+      { status: 400 }
+    )
+  }
+
+  const scheduledDate = new Date(scheduledAt)
+  if (isNaN(scheduledDate.getTime())) {
+    return Response.json({ error: "scheduledAt must be a valid ISO date" }, { status: 400 })
+  }
+
+  if (scheduledDate <= new Date()) {
+    return Response.json({ error: "scheduledAt must be in the future" }, { status: 400 })
+  }
+
+  try {
+    // Fetch agent and verify ownership
+    const agent = await prisma.agent.findUnique({
+      where: { id: agentId },
+      select: { id: true, userId: true, config: true },
+    })
+
+    if (!agent || agent.userId !== session.user.id) {
+      return Response.json({ error: "Agent not found" }, { status: 404 })
+    }
+
+    const config = agent.config as AgentConfig
+    if (!config.can_book_appointments) {
+      return Response.json(
+        { error: "This agent does not support appointment booking" },
+        { status: 403 }
+      )
+    }
+
+    // Create appointment
+    const appointment = await prisma.appointment.create({
+      data: {
+        agentId,
+        patientName,
+        patientPhone: patientPhone || null,
+        scheduledAt: scheduledDate,
+        service,
+        status: AppointmentStatus.BOOKED,
+      },
+      include: {
+        agent: { select: { id: true, name: true, businessName: true } },
+      },
+    })
+
+    // Try Google Calendar sync (non-fatal)
+    try {
+      const integration = await prisma.integration.findUnique({
+        where: {
+          userId_provider: {
+            userId: session.user.id,
+            provider: IntegrationProvider.GOOGLE_CALENDAR,
+          },
+        },
+        select: { id: true },
+      })
+
+      if (integration) {
+        const { eventId } = await bookAppointment(session.user.id, {
+          patientName,
+          patientPhone: patientPhone || undefined,
+          scheduledAt,
+          service,
+          durationMinutes: 30,
+        })
+
+        await prisma.appointment.update({
+          where: { id: appointment.id },
+          data: { calendarEventId: eventId },
+        })
+      }
+    } catch (calErr) {
+      console.error("[POST /api/appointments] Calendar sync failed (non-fatal):", calErr)
+    }
+
+    return Response.json(appointment, { status: 201 })
+  } catch (err) {
+    console.error("[POST /api/appointments]", err)
     return Response.json({ error: "Internal server error" }, { status: 500 })
   }
 }
