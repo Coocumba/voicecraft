@@ -8,10 +8,11 @@ interface GuidedNextStepsProps {
   agentName: string
   hasTested?: boolean
   needsCalendar?: boolean
+  hasPhoneNumber?: boolean
   needsSms?: boolean // true when agent has phone + can book + smsEnabled is false
 }
 
-export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCalendar = false, needsSms = false }: GuidedNextStepsProps) {
+export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCalendar = false, hasPhoneNumber = false, needsSms = false }: GuidedNextStepsProps) {
   const [visible, setVisible] = useState(true)
 
   // Strip ?new=true / ?tested=true from URL on mount, keep UI visible via local state.
@@ -99,13 +100,15 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCa
         </div>
 
         {/* Get a number step */}
-        <div className="bg-white rounded-xl border border-border p-5">
+        <div className={`bg-white rounded-xl border p-5 ${hasPhoneNumber ? 'border-success/30' : 'border-border'}`}>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-accent/10 text-accent">{numberStepNum}</span>
-            <p className="font-medium text-ink">Get a phone number</p>
+            <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${hasPhoneNumber ? 'bg-success/10 text-success' : 'bg-accent/10 text-accent'}`}>
+              {hasPhoneNumber ? '✓' : numberStepNum}
+            </span>
+            <p className="font-medium text-ink">{hasPhoneNumber ? 'Phone number assigned' : 'Get a phone number'}</p>
           </div>
           <p className="text-sm text-muted mb-4 ml-7">
-            Assign a number, then deploy to start handling real calls.
+            {hasPhoneNumber ? 'Your agent has a number and can receive calls.' : 'Assign a number, then deploy to start handling real calls.'}
           </p>
           <div className="ml-7">
             <button
@@ -114,12 +117,14 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCa
                 document.getElementById('phone-number-section')?.scrollIntoView({ behavior: 'smooth' })
               }}
               className={`inline-flex px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                hasTested
+                hasPhoneNumber
+                  ? 'bg-white border border-border text-ink hover:bg-cream'
+                  : hasTested
                   ? 'bg-accent text-white hover:bg-accent/90'
                   : 'bg-white border border-border text-ink hover:bg-cream'
               }`}
             >
-              Set up number
+              {hasPhoneNumber ? 'View number' : 'Set up number'}
             </button>
           </div>
         </div>

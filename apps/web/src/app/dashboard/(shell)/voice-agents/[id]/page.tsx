@@ -103,7 +103,7 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
 
       {/* Guided next steps — shown after creation (?new=true) or after testing (?tested=true) */}
       {(isNew === 'true' || isTested === 'true') && (
-        <GuidedNextSteps agentId={agent.id} agentName={agent.name} hasTested={isTested === 'true'} needsCalendar={needsCalendar} needsSms={needsSms} />
+        <GuidedNextSteps agentId={agent.id} agentName={agent.name} hasTested={isTested === 'true'} needsCalendar={needsCalendar} hasPhoneNumber={!!agent.phoneNumber} needsSms={needsSms} />
       )}
 
       {/* Header */}
