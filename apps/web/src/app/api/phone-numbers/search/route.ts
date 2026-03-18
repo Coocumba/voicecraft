@@ -20,20 +20,26 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url)
+  const country = searchParams.get("country") ?? "US"
   const areaCode = searchParams.get("areaCode") ?? undefined
   const contains = searchParams.get("contains") ?? undefined
   const locality = searchParams.get("locality") ?? undefined
   const region = searchParams.get("region") ?? undefined
   const limitStr = searchParams.get("limit")
 
+  // Validate country: exactly 2 uppercase letters (ISO 3166-1 alpha-2)
+  if (!/^[A-Z]{2}$/.test(country)) {
+    return Response.json({ error: "country must be a 2-letter ISO country code (e.g. US, GB)" }, { status: 400 })
+  }
+
   // Validate area code: exactly 3 digits
   if (areaCode && !/^\d{3}$/.test(areaCode)) {
     return Response.json({ error: "areaCode must be exactly 3 digits" }, { status: 400 })
   }
 
-  // Validate region: 2 uppercase letters
+  // Validate region: 2 uppercase letters (state/province codes are typically 2 letters)
   if (region && !/^[A-Z]{2}$/.test(region)) {
-    return Response.json({ error: "region must be a 2-letter state code (e.g. CA)" }, { status: 400 })
+    return Response.json({ error: "region must be a 2-letter state/province code (e.g. CA)" }, { status: 400 })
   }
 
   // Sanitize contains: strip non-alphanumeric except *, max 20 chars, auto-wrap with wildcards
@@ -56,6 +62,7 @@ export async function GET(request: Request) {
 
   try {
     const numbers = await searchAvailableNumbers({
+      country,
       areaCode,
       contains: sanitizedContains,
       locality,
