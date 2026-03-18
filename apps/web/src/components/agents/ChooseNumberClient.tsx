@@ -6,13 +6,26 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { formatPhone, formatLocation } from '@/lib/format-utils'
 
-const US_STATES = [
-  'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
-  'HI','ID','IL','IN','IA','KS','KY','LA','ME','MD',
-  'MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
-  'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC',
-  'SD','TN','TX','UT','VT','VA','WA','WV','WI','WY',
-  'DC',
+const COUNTRIES = [
+  { code: 'US', name: 'United States', flag: '🇺🇸' },
+  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+  { code: 'AU', name: 'Australia', flag: '🇦🇺' },
+  { code: 'IN', name: 'India', flag: '🇮🇳' },
+  { code: 'DE', name: 'Germany', flag: '🇩🇪' },
+  { code: 'FR', name: 'France', flag: '🇫🇷' },
+  { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
+  { code: 'MX', name: 'Mexico', flag: '🇲🇽' },
+  { code: 'JP', name: 'Japan', flag: '🇯🇵' },
+  { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
+  { code: 'IL', name: 'Israel', flag: '🇮🇱' },
+  { code: 'IE', name: 'Ireland', flag: '🇮🇪' },
+  { code: 'NL', name: 'Netherlands', flag: '🇳🇱' },
+  { code: 'ES', name: 'Spain', flag: '🇪🇸' },
+  { code: 'IT', name: 'Italy', flag: '🇮🇹' },
+  { code: 'SE', name: 'Sweden', flag: '🇸🇪' },
+  { code: 'PH', name: 'Philippines', flag: '🇵🇭' },
+  { code: 'ZA', name: 'South Africa', flag: '🇿🇦' },
 ] as const
 
 interface PoolNumber {
@@ -45,9 +58,9 @@ export function ChooseNumberClient({
   const router = useRouter()
 
   // Search form state
+  const [country, setCountry] = useState('US')
   const [areaCode, setAreaCode] = useState('')
   const [city, setCity] = useState('')
-  const [state, setState] = useState('')
   const [pattern, setPattern] = useState('')
 
   // Results state
@@ -64,9 +77,9 @@ export function ChooseNumberClient({
     setHasSearched(true)
 
     const params = new URLSearchParams()
+    if (country) params.set('country', country)
     if (areaCode) params.set('areaCode', areaCode)
     if (city) params.set('locality', city)
-    if (state) params.set('region', state)
     if (pattern) params.set('contains', pattern)
 
     try {
@@ -88,13 +101,12 @@ export function ChooseNumberClient({
   async function handleBrowse() {
     setAreaCode('')
     setCity('')
-    setState('')
     setPattern('')
     setIsSearching(true)
     setHasSearched(true)
 
     try {
-      const res = await fetch('/api/phone-numbers/search?limit=20')
+      const res = await fetch(`/api/phone-numbers/search?country=${country}&limit=20`)
       if (!res.ok) {
         const data = (await res.json()) as { error?: string }
         throw new Error(data.error ?? 'Search failed')
@@ -240,13 +252,15 @@ export function ChooseNumberClient({
             className="w-40 px-3 py-2 rounded-lg border border-border bg-white text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
           />
           <select
-            value={state}
-            onChange={(e) => setState(e.target.value)}
-            className="w-36 px-3 py-2 rounded-lg border border-border bg-white text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+            value={country}
+            onChange={(e) => {
+              setCountry(e.target.value)
+              setCity('')
+            }}
+            className="w-44 px-3 py-2 rounded-lg border border-border bg-white text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
           >
-            <option value="">Any state</option>
-            {US_STATES.map((s) => (
-              <option key={s} value={s}>{s}</option>
+            {COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
             ))}
           </select>
           <input
