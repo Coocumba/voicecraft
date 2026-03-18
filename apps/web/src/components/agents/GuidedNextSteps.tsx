@@ -7,9 +7,10 @@ interface GuidedNextStepsProps {
   agentId: string
   agentName: string
   hasTested?: boolean
+  needsCalendar?: boolean
 }
 
-export function GuidedNextSteps({ agentId, agentName, hasTested = false }: GuidedNextStepsProps) {
+export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCalendar = false }: GuidedNextStepsProps) {
   const [visible, setVisible] = useState(true)
 
   // Strip ?new=true / ?tested=true from URL on mount, keep UI visible via local state.
@@ -19,6 +20,12 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false }: Guide
   }, [agentId])
 
   if (!visible) return null
+
+  const calendarReturnTo = encodeURIComponent(`/dashboard/voice-agents/${agentId}?new=true`)
+
+  // Step numbers depend on whether calendar step is shown
+  const testStepNum = needsCalendar ? 2 : 1
+  const numberStepNum = needsCalendar ? 3 : 2
 
   return (
     <div className="mb-8">
@@ -34,14 +41,35 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false }: Guide
           Dismiss
         </button>
       </div>
-      <p className="text-sm text-muted mb-5">Complete these two steps to go live:</p>
+      <p className="text-sm text-muted mb-5">Complete these steps to go live:</p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Step 1: Test */}
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${needsCalendar ? 'lg:grid-cols-3' : ''}`}>
+        {/* Step 1 (conditional): Connect Google Calendar */}
+        {needsCalendar && (
+          <div className="bg-white rounded-xl border border-amber-300 p-5">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">1</span>
+              <p className="font-medium text-ink">Connect Google Calendar</p>
+            </div>
+            <p className="text-sm text-muted mb-4 ml-7">
+              Your agent books appointments — connect Calendar to avoid conflicts.
+            </p>
+            <div className="ml-7">
+              <a
+                href={`/api/integrations/google?returnTo=${calendarReturnTo}`}
+                className="inline-flex px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-amber-100 text-amber-800 hover:bg-amber-200"
+              >
+                Connect Calendar
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Test step */}
         <div className={`bg-white rounded-xl border p-5 ${hasTested ? 'border-success/30' : 'border-border'}`}>
           <div className="flex items-center gap-2 mb-1">
             <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${hasTested ? 'bg-success/10 text-success' : 'bg-accent/10 text-accent'}`}>
-              {hasTested ? '✓' : '1'}
+              {hasTested ? '✓' : testStepNum}
             </span>
             <p className="font-medium text-ink">Test your agent</p>
           </div>
@@ -62,10 +90,10 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false }: Guide
           </div>
         </div>
 
-        {/* Step 2: Get a number */}
+        {/* Get a number step */}
         <div className="bg-white rounded-xl border border-border p-5">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-accent/10 text-accent">2</span>
+            <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-accent/10 text-accent">{numberStepNum}</span>
             <p className="font-medium text-ink">Get a phone number</p>
           </div>
           <p className="text-sm text-muted mb-4 ml-7">
