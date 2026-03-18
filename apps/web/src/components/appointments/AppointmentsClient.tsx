@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { AppointmentCard } from './AppointmentCard'
 import type { AppointmentData } from './AppointmentCard'
+import { NewAppointmentDrawer } from './NewAppointmentDrawer'
 
 type FilterTab = 'all' | 'upcoming' | 'past' | 'cancelled'
 
@@ -32,9 +33,10 @@ const TABS: { key: FilterTab; label: string }[] = [
   { key: 'cancelled', label: 'Cancelled' },
 ]
 
-export function AppointmentsClient({ appointments, agents, bookingAgents: _bookingAgents, hasCalendarIntegration: _hasCalendarIntegration }: AppointmentsClientProps) {
+export function AppointmentsClient({ appointments, agents, bookingAgents, hasCalendarIntegration }: AppointmentsClientProps) {
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all')
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const now = new Date()
 
@@ -62,7 +64,7 @@ export function AppointmentsClient({ appointments, agents, bookingAgents: _booki
   return (
     <div>
       {/* Filter bar */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row gap-3 mb-6 items-start sm:items-center">
         {/* Agent dropdown */}
         {agents.length > 1 && (
           <div className="relative">
@@ -100,6 +102,16 @@ export function AppointmentsClient({ appointments, agents, bookingAgents: _booki
             </button>
           ))}
         </div>
+
+        {/* New Appointment button */}
+        {bookingAgents && bookingAgents.length > 0 && (
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="ml-auto bg-accent text-white px-4 py-2 rounded-lg text-sm hover:bg-accent/90 font-medium transition-colors"
+          >
+            New Appointment
+          </button>
+        )}
       </div>
 
       {/* Appointment cards */}
@@ -117,6 +129,16 @@ export function AppointmentsClient({ appointments, agents, bookingAgents: _booki
             <AppointmentCard key={appt.id} appointment={appt} />
           ))}
         </div>
+      )}
+
+      {bookingAgents && bookingAgents.length > 0 && (
+        <NewAppointmentDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          bookingAgents={bookingAgents}
+          hasCalendarIntegration={hasCalendarIntegration ?? false}
+          defaultAgentId={selectedAgentId !== 'all' ? selectedAgentId : undefined}
+        />
       )}
     </div>
   )
