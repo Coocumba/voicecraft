@@ -199,7 +199,7 @@ export function BuilderChat({
         }
         const data = (await res.json()) as { agent: { id: string } }
         toast.success('Agent created!')
-        router.push(`/dashboard/voice-agents/${data.agent.id}?new=true`)
+        router.push(`/dashboard/voice-agents/${data.agent.id}/connect-calendar`)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Something went wrong'
