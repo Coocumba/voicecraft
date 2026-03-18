@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import { CalendarConnectButtons } from '@/components/integrations/CalendarConnectButtons'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -128,26 +128,7 @@ function CalendarSection() {
     )
   }
 
-  // Neither connected — show available options
-  const googleAvailable = googleStatus.available
-  const microsoftAvailable = microsoftStatus.available
-
-  if (!googleAvailable && !microsoftAvailable) {
-    return (
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <p className="text-sm text-ink">Connect your calendar</p>
-          <p className="text-xs text-muted">
-            Automatically add booked appointments to your calendar.
-          </p>
-        </div>
-        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-muted/15 text-muted">
-          Coming soon
-        </span>
-      </div>
-    )
-  }
-
+  // Neither connected — show connect options
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="space-y-1">
@@ -156,29 +137,8 @@ function CalendarSection() {
           Automatically add booked appointments to your calendar.
         </p>
       </div>
-      <div className="shrink-0 flex flex-wrap gap-2">
-        {googleAvailable && (
-          <a
-            href="/api/integrations/google?returnTo=%2Fdashboard%2Fsettings"
-            className={cn(
-              'whitespace-nowrap px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-              'bg-accent text-white hover:bg-accent/90'
-            )}
-          >
-            Google Calendar
-          </a>
-        )}
-        {microsoftAvailable && (
-          <a
-            href="/api/integrations/microsoft?returnTo=%2Fdashboard%2Fsettings"
-            className={cn(
-              'whitespace-nowrap px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-              'bg-accent text-white hover:bg-accent/90'
-            )}
-          >
-            Microsoft Outlook
-          </a>
-        )}
+      <div className="shrink-0">
+        <CalendarConnectButtons returnTo="/dashboard/settings" />
       </div>
     </div>
   )
