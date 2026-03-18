@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { CalendarConnectButtons } from '@/components/integrations/CalendarConnectButtons'
 
 interface GuidedNextStepsProps {
   agentId: string
@@ -22,8 +23,6 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCa
   }, [agentId])
 
   if (!visible) return null
-
-  const calendarReturnTo = encodeURIComponent(`/dashboard/voice-agents/${agentId}?new=true`)
 
   // Step numbers depend on which optional steps are shown
   let stepCounter = 1
@@ -58,18 +57,13 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCa
           <div className="bg-white rounded-xl border border-amber-300 p-5">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{calendarStepNum}</span>
-              <p className="font-medium text-ink">Connect Google Calendar</p>
+              <p className="font-medium text-ink">Connect your calendar</p>
             </div>
             <p className="text-sm text-muted mb-4 ml-7">
               Your agent books appointments — connect Calendar to avoid conflicts.
             </p>
             <div className="ml-7">
-              <a
-                href={`/api/integrations/google?returnTo=${calendarReturnTo}`}
-                className="inline-flex px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-amber-100 text-amber-800 hover:bg-amber-200"
-              >
-                Connect Calendar
-              </a>
+              <CalendarConnectButtons returnTo={`/dashboard/voice-agents/${agentId}?new=true`} />
             </div>
           </div>
         )}

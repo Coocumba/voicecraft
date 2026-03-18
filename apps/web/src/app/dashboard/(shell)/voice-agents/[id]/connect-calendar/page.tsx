@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma, IntegrationProvider } from '@voicecraft/db'
 import type { AgentConfig } from '@/lib/builder-types'
+import { CalendarConnectButtons } from '@/components/integrations/CalendarConnectButtons'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -20,7 +21,10 @@ export default async function ConnectCalendarPage({ params }: PageProps) {
       select: { id: true, name: true, userId: true, config: true },
     }),
     prisma.integration.findFirst({
-      where: { userId: session.user.id, provider: IntegrationProvider.GOOGLE_CALENDAR },
+      where: {
+        userId: session.user.id,
+        provider: { in: [IntegrationProvider.GOOGLE_CALENDAR, IntegrationProvider.MICROSOFT_OUTLOOK] },
+      },
       select: { id: true },
     }),
   ])
@@ -35,24 +39,17 @@ export default async function ConnectCalendarPage({ params }: PageProps) {
     redirect(`/dashboard/voice-agents/${id}?new=true`)
   }
 
-  const returnTo = encodeURIComponent(`/dashboard/voice-agents/${id}?new=true`)
-
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="max-w-lg w-full text-center">
         <h1 className="font-serif text-2xl sm:text-3xl text-ink mb-3">Connect your calendar</h1>
         <p className="text-sm text-muted mb-8 max-w-md mx-auto">
-          {agent.name} books appointments. Connect Google Calendar so it uses your real
+          {agent.name} books appointments. Connect your calendar so it uses your real
           availability — otherwise it&apos;ll offer placeholder time slots that may conflict
           with your schedule.
         </p>
         <div className="space-y-3">
-          <a
-            href={`/api/integrations/google?returnTo=${returnTo}`}
-            className="inline-flex bg-accent text-white px-6 py-2.5 rounded-lg text-sm hover:bg-accent/90 font-medium transition-colors"
-          >
-            Connect Google Calendar
-          </a>
+          <CalendarConnectButtons returnTo={`/dashboard/voice-agents/${id}?new=true`} />
           <div>
             <Link
               href={`/dashboard/voice-agents/${id}?new=true`}
