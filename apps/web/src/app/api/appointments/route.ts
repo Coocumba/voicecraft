@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
-import { prisma, AppointmentStatus, IntegrationProvider } from "@voicecraft/db"
+import { prisma, AppointmentStatus } from "@voicecraft/db"
 import type { Prisma } from "@voicecraft/db"
-import { bookAppointment } from "@/lib/google-calendar"
+import { bookAppointment, hasCalendarIntegration } from "@/lib/calendar"
 import type { AgentConfig } from "@/lib/builder-types"
 
 const MAX_LIMIT = 100
@@ -214,20 +214,12 @@ export async function POST(request: Request) {
       },
     })
 
-    // Try Google Calendar sync (non-fatal)
+    // Try calendar sync (non-fatal)
     try {
-      const integration = await prisma.integration.findUnique({
-        where: {
-          userId_provider: {
-            userId: session.user.id,
-            provider: IntegrationProvider.GOOGLE_CALENDAR,
-          },
-        },
-        select: { id: true },
-      })
+      const hasCalendar = await hasCalendarIntegration(session.user.id)
 
-      if (integration) {
-        const { eventId } = await bookAppointment(session.user.id, {
+      if (hasCalendar) {
+        const result = await bookAppointment(session.user.id, {
           patientName,
           patientPhone: patientPhone || undefined,
           scheduledAt,
@@ -235,10 +227,12 @@ export async function POST(request: Request) {
           durationMinutes: 30,
         })
 
-        await prisma.appointment.update({
-          where: { id: appointment.id },
-          data: { calendarEventId: eventId },
-        })
+        if (result) {
+          await prisma.appointment.update({
+            where: { id: appointment.id },
+            data: { calendarEventId: result.eventId },
+          })
+        }
       }
     } catch (calErr) {
       console.error("[POST /api/appointments] Calendar sync failed (non-fatal):", calErr)

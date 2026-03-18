@@ -1,6 +1,6 @@
 import { auth } from "@/auth"
 import { prisma, AppointmentStatus } from "@voicecraft/db"
-import { deleteCalendarEvent } from "@/lib/google-calendar"
+import { deleteCalendarEvent } from "@/lib/calendar"
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -55,7 +55,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       )
     }
 
-    // Delete Google Calendar event if one exists and the user has the integration
+    // Delete calendar event if one exists and the user has the integration
     if (appointment.calendarEventId) {
       await deleteCalendarEvent(session.user.id, appointment.calendarEventId)
     }

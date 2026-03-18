@@ -2,11 +2,11 @@
 // Authentication is via VOICECRAFT_API_KEY header — no user session.
 //
 // Always creates the Appointment record in the DB.
-// If the agent's owner has a Google Calendar integration, also creates a
+// If the agent's owner has a calendar integration connected, also creates a
 // calendar event and stores the event ID on the appointment record.
 
-import { prisma, IntegrationProvider } from "@voicecraft/db"
-import { bookAppointment } from "@/lib/google-calendar"
+import { prisma } from "@voicecraft/db"
+import { bookAppointment, hasCalendarIntegration } from "@/lib/calendar"
 import { withCors, preflightResponse } from "@/lib/cors"
 
 export function OPTIONS(): Response {
@@ -77,32 +77,24 @@ export async function POST(request: Request): Promise<Response> {
       }
     }
 
-    // Attempt to create a Google Calendar event if the user has a live integration.
+    // Attempt to create a calendar event if the user has a live integration.
     let calendarEventId: string | undefined
     try {
-      const integration = await prisma.integration.findUnique({
-        where: {
-          userId_provider: {
-            userId: agent.userId,
-            provider: IntegrationProvider.GOOGLE_CALENDAR,
-          },
-        },
-        select: { id: true },
-      })
+      const hasCalendar = await hasCalendarIntegration(agent.userId)
 
-      if (integration) {
+      if (hasCalendar) {
         const result = await bookAppointment(agent.userId, {
           patientName: patientName.trim(),
           patientPhone: typeof patientPhone === "string" ? patientPhone.trim() : undefined,
           scheduledAt: scheduledDate.toISOString(),
           service: service.trim(),
         })
-        calendarEventId = result.eventId
+        calendarEventId = result?.eventId
       }
     } catch (err) {
       // Non-fatal: the appointment will still be created in the DB without a
       // calendar event ID.  The user can reconnect their calendar later.
-      console.warn("[book] Google Calendar event creation failed", {
+      console.warn("[book] Calendar event creation failed", {
         err,
         userId: agent.userId,
         scheduledAt,

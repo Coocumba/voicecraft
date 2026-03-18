@@ -1,13 +1,13 @@
 // Webhook called by the LiveKit voice agent to check available appointment slots.
 // Authentication is via VOICECRAFT_API_KEY header — no user session.
 //
-// Uses Google Calendar when the agent's owner has connected their calendar;
+// Uses the connected calendar provider when the agent's owner has connected one;
 // falls back to deterministic mock slots otherwise.
 //
 // Respects the agent's configured timezone, business hours, and service duration.
 
-import { prisma, IntegrationProvider } from "@voicecraft/db"
-import { getCalendarEventsForDate } from "@/lib/google-calendar"
+import { prisma } from "@voicecraft/db"
+import { getCalendarEventsForDate, hasCalendarIntegration } from "@/lib/calendar"
 import { withCors, preflightResponse } from "@/lib/cors"
 import { getDayName, isValidTimezone } from "@/lib/timezone-utils"
 import { generateSlots } from "@/lib/slot-generator"
@@ -145,16 +145,13 @@ export async function POST(request: Request): Promise<Response> {
   // Generate candidate slots
   const allSlots = generateSlots(dateStr, open, close, durationMinutes, timezone)
 
-  // Check for Google Calendar integration
-  const integration = await prisma.integration.findFirst({
-    where: { userId: agent.userId, provider: IntegrationProvider.GOOGLE_CALENDAR },
-    select: { id: true },
-  })
+  // Check for calendar integration
+  const hasCalendar = await hasCalendarIntegration(agent.userId)
 
   let availableSlots: string[]
-  let source: "google_calendar" | "mock"
+  let source: "calendar" | "mock"
 
-  if (integration) {
+  if (hasCalendar) {
     try {
       const events = await getCalendarEventsForDate(agent.userId, dateStr, timezone)
       // Filter out slots that overlap with any calendar event
@@ -163,9 +160,9 @@ export async function POST(request: Request): Promise<Response> {
         const slotEnd = slotStart + durationMinutes * 60_000
         return !events.some((ev) => ev.start.getTime() < slotEnd && ev.end.getTime() > slotStart)
       })
-      source = "google_calendar"
+      source = "calendar"
     } catch (err) {
-      console.error("[availability] Google Calendar error, falling back to mock", err)
+      console.error("[availability] Calendar error, falling back to mock", err)
       // Mock: deterministic filter (~25% unavailable)
       availableSlots = allSlots.filter((_, i) => (i + 1) % 4 !== 0)
       source = "mock"

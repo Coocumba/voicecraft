@@ -15,7 +15,7 @@ import {
   getCalendarEventsForDate,
   bookAppointment,
   deleteCalendarEvent,
-} from "@/lib/google-calendar"
+} from "@/lib/calendar"
 import { getDayName } from "@/lib/timezone-utils"
 import type { AgentConfig } from "@/lib/builder-types"
 
@@ -425,14 +425,14 @@ async function handleBook(
     },
   })
 
-  // Try Google Calendar sync (non-fatal)
+  // Try calendar sync (non-fatal)
   try {
     const defaultDuration =
       config.services?.find(
         (s) => s.name.toLowerCase() === service.toLowerCase()
       )?.duration ?? 30
 
-    const { eventId } = await bookAppointment(agent.userId, {
+    const result = await bookAppointment(agent.userId, {
       patientName,
       patientPhone: customerPhone,
       scheduledAt: scheduledAt.toISOString(),
@@ -440,12 +440,14 @@ async function handleBook(
       durationMinutes: defaultDuration,
     })
 
-    await prisma.appointment.update({
-      where: { id: appointment.id },
-      data: { calendarEventId: eventId },
-    })
+    if (result) {
+      await prisma.appointment.update({
+        where: { id: appointment.id },
+        data: { calendarEventId: result.eventId },
+      })
+    }
   } catch (err) {
-    console.warn("[twilio-sms] Google Calendar sync failed (non-fatal)", err)
+    console.warn("[twilio-sms] Calendar sync failed (non-fatal)", err)
   }
 
   const formatter = new Intl.DateTimeFormat("en-US", {
