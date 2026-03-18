@@ -228,50 +228,52 @@ export function BuilderChat({
   return (
     <div className="flex flex-col h-full">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 justify-end">
-        {messages.map((msg, i) => (
-          <ChatMessage key={i} message={msg} />
-        ))}
+      <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex flex-col gap-4 min-h-full justify-end">
+          {messages.map((msg, i) => (
+            <ChatMessage key={i} message={msg} />
+          ))}
 
-        {/* Generating indicator */}
-        {isGenerating && (
-          <div className="self-start">
-            <div className="bg-cream rounded-2xl rounded-bl-md px-4 py-3">
-              <span className="text-xs text-muted">Setting up your agent…</span>
+          {/* Generating indicator */}
+          {isGenerating && (
+            <div className="self-start">
+              <div className="bg-cream rounded-2xl rounded-bl-md px-4 py-3">
+                <span className="text-xs text-muted">Setting up your agent…</span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Typing indicator */}
-        {isSending && !isGenerating && (
-          <div className="self-start">
-            <div className="bg-cream rounded-2xl rounded-bl-md px-4 py-3">
-              <span className="inline-flex gap-1">
-                <span className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce [animation-delay:0ms]" />
-                <span className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce [animation-delay:150ms]" />
-                <span className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce [animation-delay:300ms]" />
-              </span>
+          {/* Typing indicator */}
+          {isSending && !isGenerating && (
+            <div className="self-start">
+              <div className="bg-cream rounded-2xl rounded-bl-md px-4 py-3">
+                <span className="inline-flex gap-1">
+                  <span className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce [animation-delay:300ms]" />
+                </span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Inline summary + CTA */}
-        {generatedConfig && (
-          <div className="self-start w-full max-w-[80%]">
-            <InlineSummaryCard config={generatedConfig} />
-            <button
-              onClick={() => void handleSave()}
-              disabled={isSaving}
-              className="w-full bg-accent text-white py-3 rounded-xl font-medium text-sm hover:bg-accent/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-2"
-            >
-              {isSaving
-                ? editMode ? 'Saving changes…' : 'Creating agent…'
-                : editMode ? 'Save changes' : 'Create Agent'}
-            </button>
-          </div>
-        )}
+          {/* Inline summary + CTA */}
+          {generatedConfig && (
+            <div className="self-start w-full max-w-[80%]">
+              <InlineSummaryCard config={generatedConfig} />
+              <button
+                onClick={() => void handleSave()}
+                disabled={isSaving}
+                className="w-full bg-accent text-white py-3 rounded-xl font-medium text-sm hover:bg-accent/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+              >
+                {isSaving
+                  ? editMode ? 'Saving changes…' : 'Creating agent…'
+                  : editMode ? 'Save changes' : 'Create Agent'}
+              </button>
+            </div>
+          )}
 
-        <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Input area */}
