@@ -161,8 +161,8 @@ function CalendarSection() {
           <a
             href="/api/integrations/google?returnTo=%2Fdashboard%2Fsettings"
             className={cn(
-              'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-              'bg-white border border-border text-ink hover:bg-cream'
+              'whitespace-nowrap px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+              'bg-accent text-white hover:bg-accent/90'
             )}
           >
             Google Calendar
@@ -172,8 +172,8 @@ function CalendarSection() {
           <a
             href="/api/integrations/microsoft?returnTo=%2Fdashboard%2Fsettings"
             className={cn(
-              'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-              'bg-white border border-border text-ink hover:bg-cream'
+              'whitespace-nowrap px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+              'bg-accent text-white hover:bg-accent/90'
             )}
           >
             Microsoft Outlook
