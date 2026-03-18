@@ -10,7 +10,7 @@ interface GuidedNextStepsProps {
   hasTested?: boolean
   needsCalendar?: boolean
   hasPhoneNumber?: boolean
-  needsSms?: boolean // true when agent has phone + can book + smsEnabled is false
+  needsSms?: boolean // true when agent has phone + can book + whatsappEnabled is false
 }
 
 export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCalendar = false, hasPhoneNumber = false, needsSms = false }: GuidedNextStepsProps) {
@@ -123,25 +123,25 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCa
           </div>
         </div>
 
-        {/* Conditional: Enable text messages */}
+        {/* Conditional: Enable WhatsApp messages */}
         {needsSms && (
           <div className="bg-white rounded-xl border border-border p-5">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-accent/10 text-accent">{smsStepNum}</span>
-              <p className="font-medium text-ink">Enable text messages</p>
+              <p className="font-medium text-ink">Enable WhatsApp</p>
             </div>
             <p className="text-sm text-muted mb-4 ml-7">
-              Let customers text this number for instant replies about hours, services, and appointments.
+              Let customers message you on WhatsApp for instant replies about hours, services, and appointments.
             </p>
             <div className="ml-7">
               <button
                 onClick={() => {
                   setVisible(false)
-                  document.getElementById('sms-toggle-section')?.scrollIntoView({ behavior: 'smooth' })
+                  document.getElementById('whatsapp-section')?.scrollIntoView({ behavior: 'smooth' })
                 }}
                 className="inline-flex px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-white border border-border text-ink hover:bg-cream"
               >
-                Set up texts
+                Set up WhatsApp
               </button>
             </div>
           </div>

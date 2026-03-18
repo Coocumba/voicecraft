@@ -113,6 +113,42 @@ export async function POST(request: Request): Promise<Response> {
       },
     })
 
+    // Send WhatsApp confirmation (non-fatal — patient may not have WhatsApp)
+    if (typeof patientPhone === "string" && patientPhone.trim() && agent.phoneNumber) {
+      const confirmationSid = process.env.TWILIO_WA_CONFIRMATION_SID
+      if (confirmationSid && agent.whatsappEnabled) {
+        try {
+          const { sendWhatsAppTemplate } = await import("@/lib/whatsapp")
+          const dateFormatter = new Intl.DateTimeFormat("en-US", {
+            weekday: "long", month: "long", day: "numeric",
+          })
+          const timeFormatter = new Intl.DateTimeFormat("en-US", {
+            hour: "numeric", minute: "2-digit", hour12: true,
+          })
+          await sendWhatsAppTemplate(
+            patientPhone.trim(),
+            agent.phoneNumber,
+            confirmationSid,
+            [
+              (patientName as string).trim(),          // {{1}} customer name
+              (service as string).trim(),               // {{2}} service
+              agent.businessName,                       // {{3}} business name
+              dateFormatter.format(scheduledDate),      // {{4}} date (e.g. "Monday, April 7")
+              timeFormatter.format(scheduledDate),      // {{5}} time (e.g. "2:00 PM")
+            ]
+          )
+        } catch (err: unknown) {
+          // 63016 = recipient not on WhatsApp — expected for landlines, log only
+          const msg = err instanceof Error ? err.message : String(err)
+          if (msg.includes("63016")) {
+            console.info("[book] Patient not on WhatsApp, skipping confirmation", { patientPhone })
+          } else {
+            console.warn("[book] WhatsApp confirmation failed (non-fatal)", err)
+          }
+        }
+      }
+    }
+
     return Response.json({ appointment }, { status: 201, headers: corsHeaders })
   } catch (err) {
     console.error("[POST /api/webhooks/book]", err)

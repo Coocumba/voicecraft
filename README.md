@@ -1,6 +1,6 @@
 # VoiceCraft
 
-VoiceCraft is a voice AI platform for small and medium businesses, starting with dental clinics. It lets you build, deploy, and monitor AI voice agents that handle appointment booking, availability checks, and SMS confirmations — all from a web dashboard.
+VoiceCraft is a voice AI platform for small and medium businesses. It lets you build, deploy, and monitor AI voice agents that handle appointment booking, availability checks, and WhatsApp confirmations — all from a web dashboard.
 
 The monorepo contains a Next.js web app (frontend + REST API + agent builder) and a Python LiveKit voice agent worker.
 
@@ -73,7 +73,11 @@ Postgres via Prisma with the following models: `User`, `Agent`, `Call`, `Appoint
 | `POST /api/calls`, `GET /api/calls` | Call logging |
 | `POST /api/webhooks/availability` | Check calendar availability (called by voice agent) |
 | `POST /api/webhooks/book` | Book appointments (called by voice agent) |
-| `POST /api/webhooks/send-sms` | Send SMS confirmations via Twilio |
+| `POST /api/webhooks/twilio-whatsapp` | Inbound WhatsApp message handler |
+| `POST /api/webhooks/twilio-whatsapp-status` | WhatsApp sender approval and opt-out events |
+| `POST /api/agents/[id]/whatsapp` | Enable WhatsApp on an agent's number |
+| `DELETE /api/agents/[id]/whatsapp` | Disable WhatsApp |
+| `POST /api/cron/appointment-reminders` | Hourly cron — sends WhatsApp 24h reminders (bearer token protected) |
 | `POST /api/webhooks/twilio-voice` | Inbound call routing — returns TwiML to forward calls to LiveKit |
 | `POST /api/agents/[id]/provision-number` | Assign a pooled number to an agent or release it back to the pool |
 | `GET /api/phone-numbers` | List user's available pool numbers |
@@ -98,12 +102,12 @@ The Python worker runs as a LiveKit `VoicePipelineAgent` with:
 - **STT** — Deepgram Nova-3
 - **LLM** — Google Gemini Flash
 - **TTS** — ElevenLabs (with Google TTS fallback)
-- **Tools** — function calls that hit the Next.js webhook API to check availability, book appointments, and send SMS
+- **Tools** — function calls that hit the Next.js webhook API to check availability, book appointments, and send WhatsApp confirmations
 
 ### Integrations
 
 - Google Calendar (read availability, create bookings)
-- Twilio SMS (send confirmation messages, with mock fallback for local development)
+- Twilio WhatsApp (send booking confirmations and 24h appointment reminders via WhatsApp)
 
 ---
 
@@ -183,7 +187,9 @@ uv run python -m src.agent.worker start
 | `GOOGLE_CLIENT_SECRET` | Google Calendar OAuth client secret |
 | `TWILIO_ACCOUNT_SID` | Twilio account SID (enables phone provisioning) |
 | `TWILIO_AUTH_TOKEN` | Twilio auth token |
-| `TWILIO_FROM_NUMBER` | Twilio sender number for SMS confirmations (optional) |
+| `TWILIO_WA_CONFIRMATION_SID` | Meta-approved WhatsApp template SID for booking confirmations (optional) |
+| `TWILIO_WA_REMINDER_SID` | Meta-approved WhatsApp template SID for appointment reminders (optional) |
+| `CRON_SECRET` | Bearer token for authenticating `POST /api/cron/appointment-reminders` |
 | `NEXT_PUBLIC_APP_URL` | Base URL (e.g. `http://localhost:3000`) |
 
 ### apps/agent (.env)
@@ -207,7 +213,7 @@ uv run python -m src.agent.worker start
 
 ## Twilio Setup
 
-VoiceCraft uses a single platform Twilio account to provision phone numbers for all customers and send SMS confirmations. Customers never need their own Twilio accounts.
+VoiceCraft uses a single platform Twilio account to provision phone numbers for all customers and send WhatsApp messages. Customers never need their own Twilio accounts.
 
 ### 1. Create a Twilio account
 
@@ -254,19 +260,31 @@ Caller → Twilio number → POST /api/webhooks/twilio-voice
 
 All numbers share one webhook endpoint. No per-number configuration to manage.
 
-### 5. SMS confirmations (optional)
+### 5. WhatsApp messaging (optional)
 
-To also enable SMS appointment confirmations, buy a sender number from **Phone Numbers → Manage → Buy a Number** in the Twilio console, then add:
+VoiceCraft operates as a WhatsApp Tech Provider (ISV) under Twilio's WAISV program. Each agent's provisioned phone number handles both voice calls and WhatsApp messages — no second number needed.
+
+To enable WhatsApp messaging:
+
+1. Register as a WhatsApp ISV in the Twilio Console under **Messaging → WhatsApp → Senders**
+2. Create two Meta-approved message templates (confirmation and reminder) in your Twilio Content Editor
+3. Add the template SIDs and a cron secret to your environment:
 
 ```bash
-TWILIO_FROM_NUMBER=+15551234567
+TWILIO_WA_CONFIRMATION_SID=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_WA_REMINDER_SID=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+CRON_SECRET=generate-a-strong-secret
 ```
 
-This is the number SMS messages are sent *from*. It's separate from the per-agent numbers provisioned for voice calls.
+Once configured, business owners can enable WhatsApp per agent from the agent detail page. Customers can then WhatsApp the agent's number directly.
+
+**Appointment reminders** are sent automatically ~24 hours before each appointment. Trigger the cron job hourly:
+- **Vercel**: set `CRON_SECRET` in project settings — Vercel cron runner sends it automatically
+- **Self-hosted**: `make cron-reminders` (uses `CRON_SECRET` from your shell environment)
 
 ### 6. Trial account limitations
 
-Twilio trial accounts can only call/SMS [verified numbers](https://www.twilio.com/docs/usage/tutorials/how-to-use-your-free-trial-account). To test with real calls, upgrade to a paid account or verify the numbers you'll call from.
+Twilio trial accounts can only call [verified numbers](https://www.twilio.com/docs/usage/tutorials/how-to-use-your-free-trial-account). To test with real calls, upgrade to a paid account or verify the numbers you'll call from.
 
 ### What customers see
 

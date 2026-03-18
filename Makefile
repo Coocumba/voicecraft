@@ -106,3 +106,9 @@ lock: ## Regenerate uv.lock after changing pyproject.toml
 .PHONY: install
 install: ## Install JS dependencies (pnpm)
 	pnpm install
+
+# ── cron ──────────────────────────────────────────────────────────────────────
+.PHONY: cron-reminders
+cron-reminders: ## Send appointment reminders (run hourly via cron)
+	curl -s -X POST http://localhost:3000/api/cron/appointment-reminders \
+		-H "Authorization: Bearer $${CRON_SECRET}" | jq .

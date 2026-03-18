@@ -1,6 +1,6 @@
 // Twilio REST API utilities.
 // Uses plain fetch against the Twilio API — no SDK needed.
-// Required env vars: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
+// Required env vars: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN
 
 import crypto from "crypto"
 
@@ -70,14 +70,13 @@ function twilioBaseUrl(): string {
 }
 
 /**
- * Returns true if all three Twilio env vars are configured.
- * Used by callers to decide whether to attempt a real SMS send vs. mock.
+ * Returns true if Twilio credentials are configured for messaging.
+ * WhatsApp sends from the agent's own number, so TWILIO_FROM_NUMBER is not required.
  */
 export function isTwilioConfigured(): boolean {
   return Boolean(
     process.env.TWILIO_ACCOUNT_SID &&
-    process.env.TWILIO_AUTH_TOKEN &&
-    process.env.TWILIO_FROM_NUMBER
+    process.env.TWILIO_AUTH_TOKEN
   )
 }
 
@@ -308,7 +307,10 @@ export function validateTwilioSignature(
     .update(data)
     .digest("base64")
 
-  return signature === expected
+  const sigBuf = Buffer.from(signature)
+  const expBuf = Buffer.from(expected)
+  if (sigBuf.length !== expBuf.length) return false
+  return crypto.timingSafeEqual(sigBuf, expBuf)
 }
 
 /**
@@ -371,5 +373,41 @@ export async function configureNumberSmsWebhook(
   if (!res.ok) {
     const text = await res.text()
     throw new Error(`Twilio SMS webhook config failed (${res.status}): ${text}`)
+  }
+}
+
+/**
+ * Configure the inbound WhatsApp webhook for a registered WhatsApp Sender.
+ *
+ * For WAISV (production) numbers, Twilio routes inbound WhatsApp messages via
+ * the Sender resource webhook, not the IncomingPhoneNumber SmsUrl.
+ * Verify the correct API endpoint in Twilio's WAISV docs before deploying.
+ *
+ * @param numberSid  The Twilio IncomingPhoneNumber SID (e.g. PN...)
+ * @param webhookUrl The full URL to our WhatsApp webhook, or null to clear it
+ */
+export async function configureNumberWhatsAppWebhook(
+  numberSid: string,
+  webhookUrl: string | null
+): Promise<void> {
+  // TODO: Verify WAISV routing — this endpoint is correct for Sandbox;
+  // production WAISV numbers may require the messaging.twilio.com Sender API.
+  const params = new URLSearchParams({
+    SmsUrl: webhookUrl ?? "",
+    SmsMethod: "POST",
+  })
+
+  const res = await fetch(`${twilioBaseUrl()}/IncomingPhoneNumbers/${numberSid}.json`, {
+    method: "POST",
+    headers: {
+      Authorization: twilioBasicAuth(),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: params.toString(),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Twilio WhatsApp webhook config failed (${res.status}): ${text}`)
   }
 }

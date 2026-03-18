@@ -51,8 +51,8 @@ export default async function DashboardHomePage() {
         />
         <ServiceCard
           emoji="💬"
-          label="SMS Bot"
-          description="Respond to customer texts automatically."
+          label="WhatsApp Bot"
+          description="Respond to customer WhatsApp messages automatically."
           href="#"
           available={false}
           ctaLabel="Coming soon"

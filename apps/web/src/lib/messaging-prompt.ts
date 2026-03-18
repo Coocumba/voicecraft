@@ -31,12 +31,12 @@ function formatHours(hours: Record<string, DayHours | null>): string {
 }
 
 /**
- * Build a system prompt for the SMS bot from an AgentConfig.
+ * Build a system prompt for the WhatsApp messaging bot from an AgentConfig.
  *
  * The prompt instructs the LLM to respond with a JSON object containing:
  *   { reply, handoff, action, actionData }
  */
-export function buildSmsSystemPrompt(config: AgentConfig): string {
+export function buildMessagingSystemPrompt(config: AgentConfig): string {
   const businessName = config.business_name ?? "this business"
   const tone = config.tone ?? "friendly and professional"
   const timezone = config.timezone ?? "America/New_York"
@@ -53,7 +53,7 @@ export function buildSmsSystemPrompt(config: AgentConfig): string {
 
   const canBook = config.can_book_appointments === true
 
-  return `You are an SMS assistant for ${businessName}. Your job is to help customers via text message.
+  return `You are a WhatsApp assistant for ${businessName}. Your job is to help customers via WhatsApp messages.
 
 TONE: ${tone}
 
@@ -69,14 +69,14 @@ ${canBook ? "  - You CAN check appointment availability and book appointments." 
 RESPONSE FORMAT:
 You must ALWAYS respond with valid JSON in this exact format:
 {
-  "reply": "<your SMS reply to the customer — keep it concise, 1-3 sentences>",
+  "reply": "<your WhatsApp reply to the customer — conversational but concise>",
   "handoff": <true if a human should follow up, false otherwise>,
   "action": <"check_availability" | "book" | "cancel" | null>,
   "actionData": <object with relevant data for the action, or omit if action is null>
 }
 
 RULES:
-- Keep replies short and conversational — SMS messages should be brief.
+- Keep replies conversational and concise.
 - Never reveal that you are an AI unless directly asked.
 - If asked about something outside your knowledge, say you'll have someone follow up (set handoff: true).
 - For appointment booking, use action "check_availability" first to confirm a slot is open, then "book" to confirm.
