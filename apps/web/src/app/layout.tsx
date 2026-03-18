@@ -1,13 +1,14 @@
 import type { Metadata } from 'next'
-import { Playfair_Display, Source_Sans_3 } from 'next/font/google'
+import { Lora, Source_Sans_3 } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { SessionProvider } from '@/components/providers/SessionProvider'
 import './globals.css'
 
-const playfairDisplay = Playfair_Display({
+const lora = Lora({
   subsets: ['latin'],
-  weight: ['400', '500', '700'],
-  variable: '--font-playfair-display',
+  weight: ['400', '500', '600', '700'],
+  style: ['normal', 'italic'],
+  variable: '--font-lora',
 })
 
 const sourceSans3 = Source_Sans_3({
@@ -32,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${playfairDisplay.variable} ${sourceSans3.variable} font-sans bg-cream text-ink antialiased`}
+        className={`${lora.variable} ${sourceSans3.variable} font-sans bg-cream text-ink antialiased`}
         suppressHydrationWarning
       >
         <SessionProvider>
