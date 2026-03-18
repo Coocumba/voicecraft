@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
 interface DashboardErrorProps {
@@ -8,10 +9,17 @@ interface DashboardErrorProps {
 }
 
 export default function DashboardError({ error, reset }: DashboardErrorProps) {
+  const router = useRouter()
+
   useEffect(() => {
     // Log to an error reporting service in production
     console.error('[Dashboard error]', error)
   }, [error])
+
+  function handleReset() {
+    router.refresh()
+    reset()
+  }
 
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto flex items-center justify-center min-h-[60vh]">
@@ -41,7 +49,7 @@ export default function DashboardError({ error, reset }: DashboardErrorProps) {
         </p>
 
         <button
-          onClick={reset}
+          onClick={handleReset}
           className="bg-accent hover:bg-accent/90 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors"
         >
           Try Again
