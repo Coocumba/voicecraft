@@ -101,17 +101,19 @@ export function canProvisionNumbers(): boolean {
  *
  * @param to   Destination phone number in E.164 format (e.g. +15551234567).
  * @param body SMS message body.  Must not contain PII in logs.
+ * @param from Optional sender number in E.164 format. Defaults to TWILIO_FROM_NUMBER env var.
  */
 export async function sendSms(
   to: string,
-  body: string
+  body: string,
+  from?: string
 ): Promise<{ success: boolean; sid?: string }> {
-  const from = process.env.TWILIO_FROM_NUMBER
-  if (!from) throw new Error("TWILIO_FROM_NUMBER env var is required")
+  const sender = from ?? process.env.TWILIO_FROM_NUMBER
+  if (!sender) throw new Error("TWILIO_FROM_NUMBER env var is required")
 
   const params = new URLSearchParams({
     To: to,
-    From: from,
+    From: sender,
     Body: body,
   })
 
@@ -333,5 +335,37 @@ export async function configureNumberVoiceWebhook(
   if (!res.ok) {
     const text = await res.text()
     throw new Error(`Twilio number voice config failed (${res.status}): ${text}`)
+  }
+}
+
+/**
+ * Point a Twilio phone number's inbound SMS handling at our webhook.
+ * Twilio will POST to this URL whenever someone texts the number.
+ * Pass null for smsUrl to clear the webhook.
+ *
+ * @param numberSid The Twilio IncomingPhoneNumber SID (e.g. PN...)
+ * @param smsUrl    The full URL to our SMS webhook, or null to clear it
+ */
+export async function configureNumberSmsWebhook(
+  numberSid: string,
+  smsUrl: string | null
+): Promise<void> {
+  const params = new URLSearchParams({
+    SmsUrl: smsUrl ?? "",
+    SmsMethod: "POST",
+  })
+
+  const res = await fetch(`${twilioBaseUrl()}/IncomingPhoneNumbers/${numberSid}.json`, {
+    method: "POST",
+    headers: {
+      Authorization: twilioBasicAuth(),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: params.toString(),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Twilio SMS webhook config failed (${res.status}): ${text}`)
   }
 }
