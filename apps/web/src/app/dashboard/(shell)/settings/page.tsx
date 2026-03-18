@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 // Types
 // ---------------------------------------------------------------------------
 
-interface GoogleCalendarStatus {
+interface CalendarStatus {
   available: boolean
   connected: boolean
   email?: string
@@ -19,39 +19,45 @@ interface GoogleCalendarStatus {
 type DisconnectStep = 'idle' | 'confirming' | 'disconnecting'
 
 // ---------------------------------------------------------------------------
-// GoogleCalendarSection
+// CalendarSection
 // ---------------------------------------------------------------------------
 
-function GoogleCalendarSection() {
-  const [status, setStatus] = useState<GoogleCalendarStatus | null>(null)
+function CalendarSection() {
+  const [googleStatus, setGoogleStatus] = useState<CalendarStatus | null>(null)
+  const [microsoftStatus, setMicrosoftStatus] = useState<CalendarStatus | null>(null)
   const [disconnectStep, setDisconnectStep] = useState<DisconnectStep>('idle')
 
   const fetchStatus = useCallback(async () => {
-    try {
-      const res = await fetch('/api/integrations/google/status')
-      if (!res.ok) throw new Error('Failed to fetch status')
-      const data = (await res.json()) as GoogleCalendarStatus
-      setStatus(data)
-    } catch {
-      // Non-fatal — leave status as null (treated as loading skeleton)
-      setStatus({ available: false, connected: false })
-    }
+    const [gRes, mRes] = await Promise.all([
+      fetch('/api/integrations/google/status').then(r => r.ok ? r.json() : { available: false, connected: false }).catch(() => ({ available: false, connected: false })),
+      fetch('/api/integrations/microsoft/status').then(r => r.ok ? r.json() : { available: false, connected: false }).catch(() => ({ available: false, connected: false })),
+    ])
+    setGoogleStatus(gRes as CalendarStatus)
+    setMicrosoftStatus(mRes as CalendarStatus)
   }, [])
 
   useEffect(() => {
     void fetchStatus()
   }, [fetchStatus])
 
+  // Determine which provider is connected (at most one)
+  const connectedProvider = googleStatus?.connected ? 'google' : microsoftStatus?.connected ? 'microsoft' : null
+  const connectedEmail = connectedProvider === 'google' ? googleStatus?.email : connectedProvider === 'microsoft' ? microsoftStatus?.email : undefined
+  const connectedLabel = connectedProvider === 'google' ? 'Google Calendar' : connectedProvider === 'microsoft' ? 'Microsoft Outlook' : null
+
   async function handleDisconnect() {
+    if (!connectedProvider) return
     setDisconnectStep('disconnecting')
+    const endpoint = connectedProvider === 'google'
+      ? '/api/integrations/google/disconnect'
+      : '/api/integrations/microsoft/disconnect'
     try {
-      const res = await fetch('/api/integrations/google/disconnect', {
-        method: 'DELETE',
-      })
+      const res = await fetch(endpoint, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to disconnect')
-      setStatus({ available: true, connected: false })
+      // Refresh status
+      await fetchStatus()
       setDisconnectStep('idle')
-      toast.success('Google Calendar disconnected')
+      toast.success(`${connectedLabel} disconnected`)
     } catch {
       setDisconnectStep('idle')
       toast.error('Could not disconnect. Please try again.')
@@ -59,7 +65,7 @@ function GoogleCalendarSection() {
   }
 
   // Loading skeleton
-  if (status === null) {
+  if (googleStatus === null || microsoftStatus === null) {
     return (
       <div className="flex items-center justify-between">
         <div className="space-y-2">
@@ -71,17 +77,17 @@ function GoogleCalendarSection() {
     )
   }
 
-  // Connected state
-  if (status.connected) {
+  // Connected state — show which provider is connected
+  if (connectedProvider && connectedLabel) {
     return (
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-success shrink-0" aria-hidden="true" />
-            <span className="text-sm font-medium text-success">Connected</span>
+            <span className="text-sm font-medium text-success">{connectedLabel} — Connected</span>
           </div>
-          {status.email && (
-            <p className="text-xs text-muted">{status.email}</p>
+          {connectedEmail && (
+            <p className="text-xs text-muted">{connectedEmail}</p>
           )}
           <p className="text-xs text-muted">
             Appointments booked by your voice agent will appear in this calendar.
@@ -97,7 +103,6 @@ function GoogleCalendarSection() {
               Disconnect
             </button>
           )}
-
           {disconnectStep === 'confirming' && (
             <div className="flex items-center gap-3 text-sm">
               <span className="text-ink">Disconnect?</span>
@@ -115,7 +120,6 @@ function GoogleCalendarSection() {
               </button>
             </div>
           )}
-
           {disconnectStep === 'disconnecting' && (
             <span className="text-sm text-muted">Disconnecting…</span>
           )}
@@ -124,12 +128,15 @@ function GoogleCalendarSection() {
     )
   }
 
-  // Not available — server doesn't have Google OAuth configured
-  if (!status.available) {
+  // Neither connected — show available options
+  const googleAvailable = googleStatus.available
+  const microsoftAvailable = microsoftStatus.available
+
+  if (!googleAvailable && !microsoftAvailable) {
     return (
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <p className="text-sm text-ink">Connect your Google Calendar</p>
+          <p className="text-sm text-ink">Connect your calendar</p>
           <p className="text-xs text-muted">
             Automatically add booked appointments to your calendar.
           </p>
@@ -141,24 +148,38 @@ function GoogleCalendarSection() {
     )
   }
 
-  // Not connected state
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="space-y-1">
-        <p className="text-sm text-ink">Connect your Google Calendar</p>
+        <p className="text-sm text-ink">Connect your calendar</p>
         <p className="text-xs text-muted">
           Automatically add booked appointments to your calendar.
         </p>
       </div>
-      <a
-        href="/api/integrations/google"
-        className={cn(
-          'shrink-0 px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-          'bg-accent text-white hover:bg-accent/90'
+      <div className="shrink-0 flex flex-wrap gap-2">
+        {googleAvailable && (
+          <a
+            href="/api/integrations/google?returnTo=%2Fdashboard%2Fsettings"
+            className={cn(
+              'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+              'bg-white border border-border text-ink hover:bg-cream'
+            )}
+          >
+            Google Calendar
+          </a>
         )}
-      >
-        Connect
-      </a>
+        {microsoftAvailable && (
+          <a
+            href="/api/integrations/microsoft?returnTo=%2Fdashboard%2Fsettings"
+            className={cn(
+              'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+              'bg-white border border-border text-ink hover:bg-cream'
+            )}
+          >
+            Microsoft Outlook
+          </a>
+        )}
+      </div>
     </div>
   )
 }
@@ -175,17 +196,19 @@ export default function SettingsPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  // Show a toast and clean the URL when Google OAuth redirects back.
+  // Show a toast and clean the URL when OAuth redirects back.
   useEffect(() => {
     const integration = searchParams.get('integration')
     const provider = searchParams.get('provider')
 
-    if (provider !== 'google') return
+    if (provider !== 'google' && provider !== 'microsoft') return
+
+    const providerLabel = provider === 'google' ? 'Google Calendar' : 'Microsoft Outlook'
 
     if (integration === 'success') {
-      toast.success('Google Calendar connected successfully')
+      toast.success(`${providerLabel} connected successfully`)
     } else if (integration === 'error') {
-      toast.error('Could not connect Google Calendar. Please try again.')
+      toast.error(`Could not connect ${providerLabel}. Please try again.`)
     } else {
       return
     }
@@ -276,15 +299,15 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Google Calendar */}
+        {/* Calendar */}
         <div className="bg-white rounded-xl border border-border p-6">
           <div className="mb-5">
-            <h2 className="font-serif text-base text-ink">Google Calendar</h2>
+            <h2 className="font-serif text-base text-ink">Calendar</h2>
             <p className="text-sm text-muted mt-1">
               Sync booked appointments directly to your calendar.
             </p>
           </div>
-          <GoogleCalendarSection />
+          <CalendarSection />
         </div>
       </div>
     </div>
