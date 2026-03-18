@@ -22,6 +22,7 @@ import {
   purchasePhoneNumber,
   releasePhoneNumber,
   configureNumberVoiceWebhook,
+  configureNumberSmsWebhook,
 } from "@/lib/twilio"
 
 // ---------------------------------------------------------------------------
@@ -134,6 +135,21 @@ export async function releaseNumber(
   if (!record) {
     console.info(`[phone-pool] releaseNumber: no number found for agent ${agentId}`)
     return { released: false, number: null }
+  }
+
+  // Clear Twilio webhooks so the released number doesn't route to VoiceCraft
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (appUrl && !appUrl.includes("localhost")) {
+    try {
+      await configureNumberVoiceWebhook(record.twilioSid, "")
+    } catch (err) {
+      console.error(`[phone-pool] Failed to clear voice webhook for ${record.number}`, err)
+    }
+    try {
+      await configureNumberSmsWebhook(record.twilioSid, null)
+    } catch (err) {
+      console.error(`[phone-pool] Failed to clear SMS webhook for ${record.number}`, err)
+    }
   }
 
   await prisma.phoneNumber.update({
