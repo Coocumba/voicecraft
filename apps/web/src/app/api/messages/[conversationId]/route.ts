@@ -20,7 +20,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   const { conversationId } = await params
 
   try {
-    const conversation = await prisma.smsConversation.findUnique({
+    const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
         agent: {
