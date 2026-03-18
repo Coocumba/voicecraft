@@ -13,7 +13,7 @@ const config = {
         white: 'rgb(var(--color-white) / <alpha-value>)',
       },
       fontFamily: {
-        serif: ['var(--font-heading, "Playfair Display")', 'Georgia', 'serif'],
+        serif: ['var(--font-heading, "Lora")', 'Georgia', 'serif'],
         sans: ['var(--font-body, "Source Sans 3")', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
