@@ -1,6 +1,7 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
-import { prisma, AppointmentStatus } from '@voicecraft/db'
+import { prisma, AppointmentStatus, IntegrationProvider } from '@voicecraft/db'
+import type { AgentConfig } from '@/lib/builder-types'
 import { AppointmentsClient } from '@/components/appointments/AppointmentsClient'
 import type { AppointmentData } from '@/components/appointments/AppointmentCard'
 
@@ -13,11 +14,32 @@ export default async function AppointmentsPage() {
   const userId = session.user.id
 
   // Fetch all agents belonging to this user (for the filter dropdown)
-  const agents = await prisma.agent.findMany({
-    where: { userId },
-    select: { id: true, name: true },
-    orderBy: { name: 'asc' },
-  })
+  const [agents, hasCalendarIntegration, allUserAgents] = await Promise.all([
+    prisma.agent.findMany({
+      where: { userId },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.integration.findFirst({
+      where: { userId, provider: IntegrationProvider.GOOGLE_CALENDAR },
+      select: { id: true },
+    }).then(Boolean),
+    prisma.agent.findMany({
+      where: { userId },
+      select: { id: true, name: true, config: true },
+    }),
+  ])
+
+  const bookingAgentsWithServices = allUserAgents
+    .filter((a) => {
+      const c = a.config as AgentConfig | null
+      return c?.can_book_appointments === true
+    })
+    .map((a) => ({
+      id: a.id,
+      name: a.name,
+      services: ((a.config as AgentConfig | null)?.services ?? []).map((s) => s.name),
+    }))
 
   const agentIds = agents.map((a) => a.id)
 
@@ -85,8 +107,26 @@ export default async function AppointmentsPage() {
         </div>
       </div>
 
+      {/* Calendar nudge banner */}
+      {!hasCalendarIntegration && (
+        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-5 py-3 text-sm text-blue-800 mb-6">
+          <span>Connect Google Calendar to avoid double-bookings and sync appointments automatically.</span>
+          <a
+            href="/api/integrations/google?returnTo=%2Fdashboard%2Fappointments"
+            className="text-accent font-medium hover:text-accent/80 transition-colors whitespace-nowrap ml-4"
+          >
+            Connect Google Calendar →
+          </a>
+        </div>
+      )}
+
       {/* Client-side filtered list */}
-      <AppointmentsClient appointments={serialized} agents={agents} />
+      <AppointmentsClient
+        appointments={serialized}
+        agents={agents}
+        bookingAgents={bookingAgentsWithServices}
+        hasCalendarIntegration={hasCalendarIntegration}
+      />
     </div>
   )
 }

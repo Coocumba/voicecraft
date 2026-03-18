@@ -12,9 +12,17 @@ interface Agent {
   name: string
 }
 
+interface BookingAgent {
+  id: string
+  name: string
+  services: string[]
+}
+
 interface AppointmentsClientProps {
   appointments: AppointmentData[]
   agents: Agent[]
+  bookingAgents?: BookingAgent[]
+  hasCalendarIntegration?: boolean
 }
 
 const TABS: { key: FilterTab; label: string }[] = [
@@ -24,7 +32,7 @@ const TABS: { key: FilterTab; label: string }[] = [
   { key: 'cancelled', label: 'Cancelled' },
 ]
 
-export function AppointmentsClient({ appointments, agents }: AppointmentsClientProps) {
+export function AppointmentsClient({ appointments, agents, bookingAgents: _bookingAgents, hasCalendarIntegration: _hasCalendarIntegration }: AppointmentsClientProps) {
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all')
 
