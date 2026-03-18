@@ -221,9 +221,9 @@ export function NewAppointmentDrawer({
             )}
           </div>
 
-          {/* Patient name */}
+          {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-ink mb-1">Patient name</label>
+            <label className="block text-sm font-medium text-ink mb-1">Name</label>
             <input
               type="text"
               value={patientName}
@@ -234,10 +234,10 @@ export function NewAppointmentDrawer({
             />
           </div>
 
-          {/* Patient phone */}
+          {/* Phone */}
           <div>
             <label className="block text-sm font-medium text-ink mb-1">
-              Patient phone <span className="text-muted font-normal">(optional)</span>
+              Phone number <span className="text-muted font-normal">(optional)</span>
             </label>
             <input
               type="text"
