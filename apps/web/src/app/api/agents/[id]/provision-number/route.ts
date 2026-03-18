@@ -222,7 +222,9 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
         phoneNumberSource: null,
         liveKitTrunkId: null,
         liveKitDispatchId: null,
-        smsEnabled: false,
+        whatsappEnabled: false,
+        whatsappStatus: "NONE",
+        whatsappRegisteredNumber: null,
         ...(agent.status === AgentStatus.ACTIVE ? { status: AgentStatus.INACTIVE } : {}),
       },
     })
