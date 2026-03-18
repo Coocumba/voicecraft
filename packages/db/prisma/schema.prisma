@@ -40,6 +40,8 @@ model Agent {
   calls             Call[]
   appointments      Appointment[]
   poolNumber        PhoneNumber?
+  smsEnabled        Boolean              @default(false)
+  smsConversations  SmsConversation[]
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
 
@@ -155,6 +157,23 @@ enum PhoneNumberStatus {
   ASSIGNED
 }
 
+enum SmsConversationStatus {
+  ACTIVE
+  NEEDS_REPLY
+  RESOLVED
+}
+
+enum SmsDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum SmsSender {
+  CUSTOMER
+  BOT
+  OWNER
+}
+
 model PhoneNumber {
   id          String            @id @default(cuid())
   number      String            @unique // E.164
@@ -180,4 +199,33 @@ model PhoneNumber {
 enum IntegrationProvider {
   GOOGLE_CALENDAR
   TWILIO
+}
+
+model SmsConversation {
+  id            String                @id @default(cuid())
+  agentId       String
+  agent         Agent                 @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  customerPhone String
+  status        SmsConversationStatus @default(ACTIVE)
+  lastMessageAt DateTime
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  messages      SmsMessage[]
+
+  @@unique([agentId, customerPhone])
+  @@index([agentId, status])
+  @@index([agentId, lastMessageAt])
+}
+
+model SmsMessage {
+  id             String          @id @default(cuid())
+  conversationId String
+  conversation   SmsConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction      SmsDirection
+  sender         SmsSender
+  body           String
+  twilioSid      String?
+  createdAt      DateTime        @default(now())
+
+  @@index([conversationId, createdAt])
 }
