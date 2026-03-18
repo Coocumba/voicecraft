@@ -99,3 +99,6 @@ ALTER TABLE "Conversation" ADD CONSTRAINT "Conversation_agentId_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "Message" ADD CONSTRAINT "Message_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "Conversation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Backfill: every existing row was SMS; new rows default to WHATSAPP
+UPDATE "Conversation" SET channel = 'SMS';
