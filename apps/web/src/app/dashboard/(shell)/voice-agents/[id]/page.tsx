@@ -173,7 +173,7 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
 
       {/* Calendar warning banner */}
       {needsCalendar && (
-        <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 text-sm text-amber-800 mb-8">
+        <div className="flex items-center justify-between bg-accent/5 border border-accent/20 rounded-xl px-5 py-3 text-sm text-accent mb-8">
           <span>Your agent offers placeholder availability because your calendar isn&apos;t connected.</span>
           <div className="ml-4 flex-shrink-0">
             <CalendarConnectButtons returnTo={`/dashboard/voice-agents/${agent.id}`} />

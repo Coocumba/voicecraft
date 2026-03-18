@@ -113,7 +113,7 @@ export default async function AppointmentsPage() {
 
       {/* Calendar nudge banner */}
       {!hasCalendarIntegration && (
-        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-5 py-3 text-sm text-blue-800 mb-6">
+        <div className="flex items-center justify-between bg-accent/5 border border-accent/20 rounded-xl px-5 py-3 text-sm text-accent mb-6">
           <span>Connect your calendar to avoid double-bookings and sync appointments automatically.</span>
           <div className="ml-4 flex-shrink-0">
             <CalendarConnectButtons returnTo="/dashboard/appointments" />
