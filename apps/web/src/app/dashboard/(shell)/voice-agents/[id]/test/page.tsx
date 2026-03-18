@@ -20,7 +20,7 @@ export default async function VoiceAgentTestPage({ params }: PageProps) {
   if (!agent || agent.userId !== session.user.id) notFound()
 
   return (
-    <div className="p-6 sm:p-8 max-w-2xl mx-auto">
+    <div className="p-6 sm:p-8 max-w-5xl mx-auto">
       <div className="mb-6">
         <Link
           href={`/dashboard/voice-agents/${agent.id}`}

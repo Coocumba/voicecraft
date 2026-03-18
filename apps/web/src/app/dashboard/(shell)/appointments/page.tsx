@@ -91,7 +91,7 @@ export default async function AppointmentsPage() {
   }))
 
   return (
-    <div className="p-6 sm:p-8 max-w-4xl mx-auto">
+    <div className="p-6 sm:p-8 max-w-5xl mx-auto">
       {/* Header */}
       <h1 className="font-serif text-2xl sm:text-3xl text-ink mb-8">Appointments</h1>
 

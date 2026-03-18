@@ -15,7 +15,7 @@ export default async function MessagesPage() {
 
   if (smsAgents.length === 0) {
     return (
-      <div className="p-6 sm:p-8 max-w-6xl mx-auto">
+      <div className="p-6 sm:p-8 max-w-5xl mx-auto">
         <h1 className="font-serif text-2xl sm:text-3xl text-ink mb-6">Messages</h1>
         <div className="bg-white rounded-xl border border-border p-10 text-center">
           <p className="text-sm text-muted">
@@ -67,7 +67,7 @@ export default async function MessagesPage() {
   }))
 
   return (
-    <div className="p-6 sm:p-8 max-w-6xl mx-auto">
+    <div className="p-6 sm:p-8 max-w-5xl mx-auto">
       <h1 className="font-serif text-2xl sm:text-3xl text-ink mb-6">Messages</h1>
       <MessagesClient
         conversations={serialized}

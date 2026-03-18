@@ -65,7 +65,7 @@ export default async function ContactsPage() {
   }))
 
   return (
-    <div className="p-6 sm:p-8 max-w-3xl mx-auto">
+    <div className="p-6 sm:p-8 max-w-5xl mx-auto">
       <div className="mb-8">
         <h1 className="font-serif text-2xl sm:text-3xl text-ink">Contacts</h1>
         <p className="text-sm text-muted mt-1">

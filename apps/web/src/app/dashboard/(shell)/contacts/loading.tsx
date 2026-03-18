@@ -1,6 +1,6 @@
 export default function ContactsLoading() {
   return (
-    <div className="p-6 sm:p-8 max-w-3xl mx-auto animate-pulse">
+    <div className="p-6 sm:p-8 max-w-5xl mx-auto animate-pulse">
       <div className="h-8 w-32 bg-border/50 rounded-lg mb-2" />
       <div className="h-4 w-20 bg-border/50 rounded mb-8" />
 
