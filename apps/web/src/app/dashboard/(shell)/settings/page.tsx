@@ -49,7 +49,7 @@ function GoogleCalendarSection() {
         method: 'DELETE',
       })
       if (!res.ok) throw new Error('Failed to disconnect')
-      setStatus({ available: false, connected: false })
+      setStatus({ available: true, connected: false })
       setDisconnectStep('idle')
       toast.success('Google Calendar disconnected')
     } catch {
