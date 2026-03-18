@@ -103,9 +103,9 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
           <StatusBadge status={appointment.status} />
           {appointment.calendarEventId && (
             <span
-              title="Synced to Google Calendar"
+              title="Synced to calendar"
               className="text-xs text-success"
-              aria-label="Synced to Google Calendar"
+              aria-label="Synced to calendar"
             >
               ✓ Cal
             </span>

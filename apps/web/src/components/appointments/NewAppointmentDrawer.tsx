@@ -276,11 +276,11 @@ export function NewAppointmentDrawer({
           <div className="pt-2">
             {hasCalendarIntegration ? (
               <p className="text-sm text-success">
-                This appointment will be synced to Google Calendar.
+                This appointment will be synced to your calendar.
               </p>
             ) : (
               <p className="text-sm text-muted">
-                This appointment won&apos;t sync to Google Calendar.{' '}
+                This appointment won&apos;t sync to your calendar.{' '}
                 <a
                   href="/api/integrations/google?returnTo=%2Fdashboard%2Fappointments"
                   className="text-accent hover:underline"
