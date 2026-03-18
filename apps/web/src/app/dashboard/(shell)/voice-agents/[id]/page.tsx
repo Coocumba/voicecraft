@@ -11,6 +11,7 @@ import { CollapsibleConfig } from '@/components/agents/CollapsibleConfig'
 import { DeleteAgentButton } from '@/components/agents/DeleteAgentButton'
 import { CallForwardingGuide } from '@/components/agents/CallForwardingGuide'
 import { SmsToggleCard } from '@/components/agents/SmsToggleCard'
+import { CalendarConnectButtons } from '@/components/integrations/CalendarConnectButtons'
 import type { AgentConfig } from '@/lib/builder-types'
 
 interface PageProps {
@@ -63,7 +64,7 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
   const { id } = await params
   const { new: isNew, tested: isTested } = await searchParams
 
-  const [agent, escalatedCount, poolNumbers, otherAgentsWithoutNumber, googleCalendarIntegration] = await Promise.all([
+  const [agent, escalatedCount, poolNumbers, otherAgentsWithoutNumber, calendarIntegration] = await Promise.all([
     prisma.agent.findUnique({
       where: { id },
       include: {
@@ -84,7 +85,10 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
       select: { id: true, name: true },
     }),
     prisma.integration.findFirst({
-      where: { userId: session.user.id, provider: IntegrationProvider.GOOGLE_CALENDAR },
+      where: {
+        userId: session.user.id,
+        provider: { in: [IntegrationProvider.GOOGLE_CALENDAR, IntegrationProvider.MICROSOFT_OUTLOOK] },
+      },
       select: { id: true },
     }),
   ])
@@ -94,8 +98,8 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
 
   const config = isAgentConfig(agent.config) ? agent.config : null
   const isDraft = agent.status === AgentStatus.DRAFT
-  const hasGoogleCalendar = !!googleCalendarIntegration
-  const needsCalendar = config?.can_book_appointments === true && !hasGoogleCalendar
+  const hasCalendar = !!calendarIntegration
+  const needsCalendar = config?.can_book_appointments === true && !hasCalendar
   const needsSms = config?.can_book_appointments === true && !!agent.phoneNumber && !agent.smsEnabled
 
   return (
@@ -170,13 +174,10 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
       {/* Calendar warning banner */}
       {needsCalendar && (
         <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 text-sm text-amber-800 mb-8">
-          <span>Your agent offers placeholder availability because Google Calendar isn&apos;t connected.</span>
-          <a
-            href={`/api/integrations/google?returnTo=${encodeURIComponent(`/dashboard/voice-agents/${agent.id}`)}`}
-            className="text-accent font-medium hover:text-accent/80 transition-colors whitespace-nowrap ml-4"
-          >
-            Connect Google Calendar →
-          </a>
+          <span>Your agent offers placeholder availability because your calendar isn&apos;t connected.</span>
+          <div className="ml-4 flex-shrink-0">
+            <CalendarConnectButtons returnTo={`/dashboard/voice-agents/${agent.id}`} />
+          </div>
         </div>
       )}
 
