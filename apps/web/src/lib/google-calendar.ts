@@ -4,6 +4,7 @@
 
 import { prisma, IntegrationProvider } from "@voicecraft/db"
 import { toUTC } from "@/lib/timezone-utils"
+import type { BookingDetails } from "@/lib/calendar"
 
 // ---------------------------------------------------------------------------
 // Internal types
@@ -39,13 +40,8 @@ export interface AvailableSlot {
   endTime: string
 }
 
-export interface BookingDetails {
-  patientName: string
-  patientPhone?: string
-  scheduledAt: string  // ISO 8601 datetime
-  service: string
-  durationMinutes?: number
-}
+// Re-export for backwards compatibility
+export type { BookingDetails } from "@/lib/calendar"
 
 // ---------------------------------------------------------------------------
 // Token helpers
