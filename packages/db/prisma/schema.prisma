@@ -198,6 +198,7 @@ model PhoneNumber {
 
 enum IntegrationProvider {
   GOOGLE_CALENDAR
+  MICROSOFT_OUTLOOK
   TWILIO
 }
 
