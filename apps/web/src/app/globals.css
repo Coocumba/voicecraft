@@ -14,7 +14,7 @@
     --color-white: 255 255 255;
 
     /* Typography */
-    --font-heading: var(--font-lora, 'Lora', Georgia, serif);
+    --font-heading: var(--font-roboto, 'Roboto', system-ui, sans-serif);
     --font-body: var(--font-source-sans-3, 'Source Sans 3', system-ui, sans-serif);
 
     /* Geometry */
