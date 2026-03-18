@@ -10,6 +10,7 @@ import { GuidedNextSteps } from '@/components/agents/GuidedNextSteps'
 import { CollapsibleConfig } from '@/components/agents/CollapsibleConfig'
 import { DeleteAgentButton } from '@/components/agents/DeleteAgentButton'
 import { CallForwardingGuide } from '@/components/agents/CallForwardingGuide'
+import { SmsToggleCard } from '@/components/agents/SmsToggleCard'
 import type { AgentConfig } from '@/lib/builder-types'
 
 interface PageProps {
@@ -193,6 +194,14 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
           <CallForwardingGuide
             voicecraftNumber={agent.phoneNumber}
             agentId={agent.id}
+          />
+        )}
+        {agent.phoneNumber && config?.can_book_appointments && (
+          <SmsToggleCard
+            agentId={agent.id}
+            smsEnabled={agent.smsEnabled ?? false}
+            hasPhoneNumber={!!agent.phoneNumber}
+            canBookAppointments={config.can_book_appointments === true}
           />
         )}
       </div>
