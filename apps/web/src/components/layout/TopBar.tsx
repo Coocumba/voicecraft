@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { SignOutButton } from '@/components/auth/SignOutButton'
@@ -16,7 +16,7 @@ const services = [
   { label: 'Appointments', href: '/dashboard/appointments', available: true },
   { label: 'Calls', href: '/dashboard/calls', available: true },
   { label: 'Contacts', href: '/dashboard/contacts', available: true },
-  { label: 'SMS Bot', href: '#', available: false },
+  { label: 'Messages', href: '/dashboard/messages', available: true },
   { label: 'Chat Widget', href: '#', available: false },
 ]
 
@@ -43,6 +43,14 @@ export function TopBar({ userName, userEmail }: TopBarProps) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    fetch('/api/messages?countOnly=true')
+      .then(res => res.json())
+      .then(data => setUnreadCount((data as { needsReplyCount?: number }).needsReplyCount ?? 0))
+      .catch(() => {})
+  }, [])
 
   function isServiceActive(href: string) {
     return pathname === href || pathname.startsWith(href + '/')
@@ -89,6 +97,11 @@ export function TopBar({ userName, userEmail }: TopBarProps) {
                 aria-current={isCurrent ? 'page' : undefined}
               >
                 {label}
+                {label === 'Messages' && unreadCount > 0 && (
+                  <span className="ml-1 bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none">
+                    {unreadCount}
+                  </span>
+                )}
               </Link>
             )
           })}
@@ -184,6 +197,11 @@ export function TopBar({ userName, userEmail }: TopBarProps) {
                   )}
                 >
                   {label}
+                  {label === 'Messages' && unreadCount > 0 && (
+                    <span className="ml-1 bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none">
+                      {unreadCount}
+                    </span>
+                  )}
                 </Link>
               )
             })}
