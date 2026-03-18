@@ -10,7 +10,7 @@ import { GuidedNextSteps } from '@/components/agents/GuidedNextSteps'
 import { CollapsibleConfig } from '@/components/agents/CollapsibleConfig'
 import { DeleteAgentButton } from '@/components/agents/DeleteAgentButton'
 import { CallForwardingGuide } from '@/components/agents/CallForwardingGuide'
-import { SmsToggleCard } from '@/components/agents/SmsToggleCard'
+import { WhatsAppStatusCard } from '@/components/agents/WhatsAppStatusCard'
 import { CalendarConnectButtons } from '@/components/integrations/CalendarConnectButtons'
 import type { AgentConfig } from '@/lib/builder-types'
 
@@ -100,7 +100,7 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
   const isDraft = agent.status === AgentStatus.DRAFT
   const hasCalendar = !!calendarIntegration
   const needsCalendar = config?.can_book_appointments === true && !hasCalendar
-  const needsSms = config?.can_book_appointments === true && !!agent.phoneNumber && !agent.smsEnabled
+  const needsSms = config?.can_book_appointments === true && !!agent.phoneNumber && !agent.whatsappEnabled
 
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto">
@@ -198,14 +198,15 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
             agentId={agent.id}
           />
         )}
-        {agent.phoneNumber && config?.can_book_appointments && (
-          <SmsToggleCard
+        <div id="whatsapp-section">
+          <WhatsAppStatusCard
             agentId={agent.id}
-            smsEnabled={agent.smsEnabled ?? false}
+            whatsappStatus={agent.whatsappStatus as 'NONE' | 'PENDING' | 'APPROVED' | 'FAILED'}
+            whatsappEnabled={agent.whatsappEnabled}
             hasPhoneNumber={!!agent.phoneNumber}
-            canBookAppointments={config.can_book_appointments === true}
+            isActive={agent.status === AgentStatus.ACTIVE}
           />
-        )}
+        </div>
       </div>
 
       {/* Collapsible config */}

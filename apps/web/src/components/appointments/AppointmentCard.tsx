@@ -14,6 +14,7 @@ export interface AppointmentData {
   patientPhone: string | null
   status: 'BOOKED' | 'CANCELLED' | 'COMPLETED'
   calendarEventId: string | null
+  reminderSent?: boolean
   agent: {
     id: string
     name: string
@@ -108,6 +109,15 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
               aria-label="Synced to calendar"
             >
               ✓ Cal
+            </span>
+          )}
+          {appointment.reminderSent && (
+            <span
+              title="WhatsApp reminder sent"
+              className="text-xs text-[#25D366]"
+              aria-label="WhatsApp reminder sent"
+            >
+              ✓ WA
             </span>
           )}
         </div>

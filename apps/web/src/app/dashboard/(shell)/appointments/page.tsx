@@ -87,6 +87,7 @@ export default async function AppointmentsPage() {
     patientPhone: appt.patientPhone,
     status: appt.status as AppointmentData['status'],
     calendarEventId: appt.calendarEventId,
+    reminderSent: appt.reminderSent,
     agent: appt.agent,
   }))
 
