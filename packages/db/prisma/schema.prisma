@@ -22,44 +22,46 @@ model User {
 }
 
 model Agent {
-  id                String               @id @default(cuid())
-  userId            String
-  user              User                 @relation(fields: [userId], references: [id])
-  name              String
-  businessName      String
-  status            AgentStatus          @default(DRAFT)
-  config            Json
-  voiceSettings     Json?
-  phoneNumber       String?
-  phoneNumberSid    String?
-  phoneNumberSource String?
-  liveKitTrunkId    String?
-  liveKitDispatchId String?
-  conversationId    String?
-  conversation      BuilderConversation? @relation(fields: [conversationId], references: [id])
-  calls             Call[]
-  appointments      Appointment[]
-  poolNumber        PhoneNumber?
-  smsEnabled        Boolean              @default(false)
-  smsConversations  SmsConversation[]
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
+  id                       String               @id @default(cuid())
+  userId                   String
+  user                     User                 @relation(fields: [userId], references: [id])
+  name                     String
+  businessName             String
+  status                   AgentStatus          @default(DRAFT)
+  config                   Json
+  voiceSettings            Json?
+  phoneNumber              String?
+  phoneNumberSid           String?
+  phoneNumberSource        String?
+  liveKitTrunkId           String?
+  liveKitDispatchId        String?
+  conversationId           String?
+  conversation             BuilderConversation? @relation(fields: [conversationId], references: [id])
+  calls                    Call[]
+  appointments             Appointment[]
+  poolNumber               PhoneNumber?
+  whatsappEnabled          Boolean              @default(false)
+  whatsappStatus           WhatsAppStatus       @default(NONE)
+  whatsappRegisteredNumber String?
+  conversations            Conversation[]
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
 
   @@index([userId])
   @@index([conversationId])
 }
 
 model Call {
-  id           String      @id @default(cuid())
+  id           String        @id @default(cuid())
   agentId      String
-  agent        Agent       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  agent        Agent         @relation(fields: [agentId], references: [id], onDelete: Cascade)
   callerNumber String?
   duration     Int?
   outcome      CallOutcome
-  transcript   String?     @db.Text
+  transcript   String?       @db.Text
   summary      String?
   appointments Appointment[]
-  createdAt    DateTime    @default(now())
+  createdAt    DateTime      @default(now())
 
   @@index([agentId])
 }
@@ -76,10 +78,12 @@ model Appointment {
   service         String
   status          AppointmentStatus @default(BOOKED)
   calendarEventId String?
+  reminderSent    Boolean           @default(false)
   createdAt       DateTime          @default(now())
 
   @@index([agentId])
   @@index([callId])
+  @@index([scheduledAt, status, reminderSent])
 }
 
 model BuilderConversation {
@@ -157,21 +161,10 @@ enum PhoneNumberStatus {
   ASSIGNED
 }
 
-enum SmsConversationStatus {
-  ACTIVE
-  NEEDS_REPLY
-  RESOLVED
-}
-
-enum SmsDirection {
-  INBOUND
-  OUTBOUND
-}
-
-enum SmsSender {
-  CUSTOMER
-  BOT
-  OWNER
+enum IntegrationProvider {
+  GOOGLE_CALENDAR
+  MICROSOFT_OUTLOOK
+  TWILIO
 }
 
 model PhoneNumber {
@@ -196,37 +189,64 @@ model PhoneNumber {
   @@index([releasedAt])
 }
 
-enum IntegrationProvider {
-  GOOGLE_CALENDAR
-  MICROSOFT_OUTLOOK
-  TWILIO
+// ── Messaging (WhatsApp / legacy SMS) ──────────────────────────────────────
+
+enum MessageChannel {
+  WHATSAPP
+  SMS
 }
 
-model SmsConversation {
-  id            String                @id @default(cuid())
-  agentId       String
-  agent         Agent                 @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  customerPhone String
-  status        SmsConversationStatus @default(ACTIVE)
-  lastMessageAt DateTime
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  messages      SmsMessage[]
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
 
-  @@unique([agentId, customerPhone])
+enum MessageSender {
+  CUSTOMER
+  BOT
+  OWNER
+}
+
+enum MessagingStatus {
+  ACTIVE
+  NEEDS_REPLY
+  RESOLVED
+}
+
+enum WhatsAppStatus {
+  NONE
+  PENDING
+  APPROVED
+  FAILED
+}
+
+model Conversation {
+  id            String          @id @default(cuid())
+  agentId       String
+  agent         Agent           @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  customerPhone String
+  channel       MessageChannel  @default(WHATSAPP)
+  optedOut      Boolean         @default(false)
+  status        MessagingStatus @default(ACTIVE)
+  lastMessageAt DateTime
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  messages      Message[]
+
+  @@unique([agentId, customerPhone, channel])
   @@index([agentId, status])
   @@index([agentId, lastMessageAt])
 }
 
-model SmsMessage {
-  id             String          @id @default(cuid())
+model Message {
+  id             String           @id @default(cuid())
   conversationId String
-  conversation   SmsConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  direction      SmsDirection
-  sender         SmsSender
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction      MessageDirection
+  sender         MessageSender
   body           String
   twilioSid      String?
-  createdAt      DateTime        @default(now())
+  createdAt      DateTime         @default(now())
 
   @@index([conversationId, createdAt])
 }
