@@ -131,25 +131,20 @@ export async function GET(request: Request): Promise<Response> {
   const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000)
 
   try {
-    await prisma.integration.upsert({
+    // Delete any existing calendar integration before creating new one (one-at-a-time enforcement).
+    await prisma.integration.deleteMany({
       where: {
-        userId_provider: {
-          userId,
-          provider: IntegrationProvider.GOOGLE_CALENDAR,
-        },
+        userId,
+        provider: { in: [IntegrationProvider.GOOGLE_CALENDAR, IntegrationProvider.MICROSOFT_OUTLOOK] },
       },
-      create: {
+    })
+
+    await prisma.integration.create({
+      data: {
         userId,
         provider: IntegrationProvider.GOOGLE_CALENDAR,
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token ?? null,
-        expiresAt,
-        metadata: accountEmail ? { accountEmail } : undefined,
-      },
-      update: {
-        accessToken: tokenData.access_token,
-        // Only overwrite the refresh token if Google issued a new one.
-        ...(tokenData.refresh_token ? { refreshToken: tokenData.refresh_token } : {}),
         expiresAt,
         metadata: accountEmail ? { accountEmail } : undefined,
       },
