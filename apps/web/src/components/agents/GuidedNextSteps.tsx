@@ -8,9 +8,10 @@ interface GuidedNextStepsProps {
   agentName: string
   hasTested?: boolean
   needsCalendar?: boolean
+  needsSms?: boolean // true when agent has phone + can book + smsEnabled is false
 }
 
-export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCalendar = false }: GuidedNextStepsProps) {
+export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCalendar = false, needsSms = false }: GuidedNextStepsProps) {
   const [visible, setVisible] = useState(true)
 
   // Strip ?new=true / ?tested=true from URL on mount, keep UI visible via local state.
@@ -23,9 +24,16 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCa
 
   const calendarReturnTo = encodeURIComponent(`/dashboard/voice-agents/${agentId}?new=true`)
 
-  // Step numbers depend on whether calendar step is shown
-  const testStepNum = needsCalendar ? 2 : 1
-  const numberStepNum = needsCalendar ? 3 : 2
+  // Step numbers depend on which optional steps are shown
+  let stepCounter = 1
+  const calendarStepNum = needsCalendar ? stepCounter++ : 0
+  const testStepNum = stepCounter++
+  const numberStepNum = stepCounter++
+  const smsStepNum = needsSms ? stepCounter++ : 0
+
+  // Grid columns: adapt to number of steps
+  const totalSteps = (needsCalendar ? 1 : 0) + 2 + (needsSms ? 1 : 0)
+  const gridCols = totalSteps >= 4 ? 'lg:grid-cols-4' : totalSteps >= 3 ? 'lg:grid-cols-3' : ''
 
   return (
     <div className="mb-8">
@@ -43,12 +51,12 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCa
       </div>
       <p className="text-sm text-muted mb-5">Complete these steps to go live:</p>
 
-      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${needsCalendar ? 'lg:grid-cols-3' : ''}`}>
-        {/* Step 1 (conditional): Connect Google Calendar */}
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${gridCols}`}>
+        {/* Conditional: Connect Google Calendar */}
         {needsCalendar && (
           <div className="bg-white rounded-xl border border-amber-300 p-5">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">1</span>
+              <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{calendarStepNum}</span>
               <p className="font-medium text-ink">Connect Google Calendar</p>
             </div>
             <p className="text-sm text-muted mb-4 ml-7">
@@ -115,6 +123,30 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCa
             </button>
           </div>
         </div>
+
+        {/* Conditional: Enable text messages */}
+        {needsSms && (
+          <div className="bg-white rounded-xl border border-border p-5">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-accent/10 text-accent">{smsStepNum}</span>
+              <p className="font-medium text-ink">Enable text messages</p>
+            </div>
+            <p className="text-sm text-muted mb-4 ml-7">
+              Let customers text this number for instant replies about hours, services, and appointments.
+            </p>
+            <div className="ml-7">
+              <button
+                onClick={() => {
+                  setVisible(false)
+                  document.getElementById('sms-toggle-section')?.scrollIntoView({ behavior: 'smooth' })
+                }}
+                className="inline-flex px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-white border border-border text-ink hover:bg-cream"
+              >
+                Set up texts
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

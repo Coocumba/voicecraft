@@ -61,7 +61,7 @@ export function SmsToggleCard({
 
   if (smsEnabled) {
     return (
-      <div className="bg-success/5 border border-success/20 rounded-xl p-5">
+      <div id="sms-toggle-section" className="bg-success/5 border border-success/20 rounded-xl p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-success" />
@@ -104,7 +104,7 @@ export function SmsToggleCard({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-border p-5">
+    <div id="sms-toggle-section" className="bg-white rounded-xl border border-border p-5">
       <p className="text-sm font-medium text-ink mb-2">Handle text messages too?</p>
       <p className="text-xs text-muted mb-3">
         Customers can text this number and get instant replies about your hours, services,

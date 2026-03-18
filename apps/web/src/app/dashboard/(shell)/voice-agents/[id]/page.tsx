@@ -96,13 +96,14 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
   const isDraft = agent.status === AgentStatus.DRAFT
   const hasGoogleCalendar = !!googleCalendarIntegration
   const needsCalendar = config?.can_book_appointments === true && !hasGoogleCalendar
+  const needsSms = config?.can_book_appointments === true && !!agent.phoneNumber && !agent.smsEnabled
 
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto">
 
       {/* Guided next steps — shown after creation (?new=true) or after testing (?tested=true) */}
       {(isNew === 'true' || isTested === 'true') && (
-        <GuidedNextSteps agentId={agent.id} agentName={agent.name} hasTested={isTested === 'true'} needsCalendar={needsCalendar} />
+        <GuidedNextSteps agentId={agent.id} agentName={agent.name} hasTested={isTested === 'true'} needsCalendar={needsCalendar} needsSms={needsSms} />
       )}
 
       {/* Header */}
