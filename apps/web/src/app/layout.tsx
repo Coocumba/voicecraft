@@ -1,13 +1,13 @@
 import type { Metadata } from 'next'
-import { Roboto, Source_Sans_3 } from 'next/font/google'
+import { Playfair_Display, Source_Sans_3 } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { SessionProvider } from '@/components/providers/SessionProvider'
 import './globals.css'
 
-const roboto = Roboto({
+const playfairDisplay = Playfair_Display({
   subsets: ['latin'],
   weight: ['400', '500', '700'],
-  variable: '--font-roboto',
+  variable: '--font-playfair-display',
 })
 
 const sourceSans3 = Source_Sans_3({
@@ -32,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${roboto.variable} ${sourceSans3.variable} font-sans bg-cream text-ink antialiased`}
+        className={`${playfairDisplay.variable} ${sourceSans3.variable} font-sans bg-cream text-ink antialiased`}
         suppressHydrationWarning
       >
         <SessionProvider>
