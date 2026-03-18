@@ -33,6 +33,7 @@ interface TwilioAvailableNumbersResponse {
 // ---------------------------------------------------------------------------
 
 export interface TwilioSearchParams {
+  country?: string      // ISO 3166-1 alpha-2 country code, default "US"
   areaCode?: string
   contains?: string     // Vanity pattern — will be wrapped with * wildcards
   locality?: string     // City name
@@ -139,11 +140,12 @@ export async function sendSms(
 }
 
 /**
- * Purchase an available US phone number, optionally filtered by area code.
+ * Purchase an available phone number for the given country, optionally filtered by area code.
  * The number is activated immediately on the account.
  */
 export async function purchasePhoneNumber(
-  areaCode?: string
+  areaCode?: string,
+  country: string = "US"
 ): Promise<{ phoneNumber: string; sid: string }> {
   const sid = process.env.TWILIO_ACCOUNT_SID
   if (!sid) throw new Error("TWILIO_ACCOUNT_SID env var is required")
@@ -152,7 +154,7 @@ export async function purchasePhoneNumber(
   const searchParams = new URLSearchParams({ Limit: "1" })
   if (areaCode) searchParams.set("AreaCode", areaCode)
 
-  const searchUrl = `${twilioBaseUrl()}/AvailablePhoneNumbers/US/Local.json?${searchParams.toString()}`
+  const searchUrl = `${twilioBaseUrl()}/AvailablePhoneNumbers/${country}/Local.json?${searchParams.toString()}`
   const searchRes = await fetch(searchUrl, {
     headers: { Authorization: twilioBasicAuth() },
   })
@@ -214,11 +216,13 @@ export async function releasePhoneNumber(numberSid: string): Promise<void> {
 }
 
 /**
- * Search for available US phone numbers on Twilio without purchasing.
+ * Search for available phone numbers on Twilio without purchasing.
+ * Pass `params.country` (ISO 3166-1 alpha-2) to search a non-US country; defaults to "US".
  */
 export async function searchAvailableNumbers(
   params: TwilioSearchParams
 ): Promise<AvailableNumber[]> {
+  const country = params.country ?? "US"
   const limit = Math.min(Math.max(params.limit ?? 20, 1), 30)
   const searchParams = new URLSearchParams({ Limit: String(limit) })
 
@@ -227,7 +231,7 @@ export async function searchAvailableNumbers(
   if (params.locality) searchParams.set("InLocality", params.locality)
   if (params.region) searchParams.set("InRegion", params.region)
 
-  const url = `${twilioBaseUrl()}/AvailablePhoneNumbers/US/Local.json?${searchParams.toString()}`
+  const url = `${twilioBaseUrl()}/AvailablePhoneNumbers/${country}/Local.json?${searchParams.toString()}`
   const res = await fetch(url, {
     headers: { Authorization: twilioBasicAuth() },
   })
