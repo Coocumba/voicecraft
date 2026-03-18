@@ -12,7 +12,7 @@ interface CallForwardingGuideProps {
   agentId: string          // Used to key localStorage state
 }
 
-type CarrierId = 'att' | 'verizon' | 'tmobile' | 'other'
+type CarrierId = 'att' | 'verizon' | 'tmobile' | 'india' | 'uk' | 'australia' | 'other'
 
 interface CarrierTab {
   id: CarrierId
@@ -38,16 +38,22 @@ const CARRIER_TABS: CarrierTab[] = [
   { id: 'att', label: 'AT&T' },
   { id: 'verizon', label: 'Verizon' },
   { id: 'tmobile', label: 'T-Mobile' },
-  { id: 'other', label: 'Other carrier' },
+  { id: 'india', label: 'India' },
+  { id: 'uk', label: 'UK' },
+  { id: 'australia', label: 'Australia' },
+  { id: 'other', label: 'Other' },
 ]
 
-function buildInstructions(formattedNumber: string): Record<CarrierId, CarrierInstructions> {
+function buildInstructions(formattedNumber: string, rawNumber: string): Record<CarrierId, CarrierInstructions> {
+  // Strip leading + for dialing strings
+  const dialDigits = rawNumber.replace(/^\+/, '')
+
   return {
     att: {
       steps: [
         {
           text: 'On your current business phone, open the dialer.',
-          sub: 'This is the same phone your patients call today.',
+          sub: 'This is the same phone your callers reach today.',
         },
         {
           text: 'Dial the following code, then press Call.',
@@ -92,22 +98,76 @@ function buildInstructions(formattedNumber: string): Record<CarrierId, CarrierIn
       note: "T-Mobile may require confirmation via the My T-Mobile app if your plan has advanced call controls. If *72 doesn't work, open the app \u2192 Account \u2192 Line Settings \u2192 Call Forwarding.",
       cancelCode: '*720',
     },
+    india: {
+      steps: [
+        {
+          text: 'On your current phone, open the dialer.',
+          sub: 'This works on all Indian carriers (Jio, Airtel, Vi, BSNL).',
+        },
+        {
+          text: 'Dial the following code, then press Call.',
+          sub: 'This is the standard GSM unconditional forwarding code.',
+        },
+        {
+          text: 'Wait for the confirmation message, then hang up.',
+          sub: 'You should see a notification or hear "Call forwarding activated."',
+        },
+      ],
+      note: 'This uses the standard GSM code **21* which works on all Indian mobile carriers. If it doesn\'t work, try: Settings \u2192 Phone/Call \u2192 Call Forwarding \u2192 Always Forward.',
+      cancelCode: '##21#',
+    },
+    uk: {
+      steps: [
+        {
+          text: 'On your current phone, open the dialer.',
+          sub: 'Works on EE, Three, O2, Vodafone, and most UK carriers.',
+        },
+        {
+          text: 'Dial the following code, then press Call.',
+          sub: 'This is the standard GSM unconditional forwarding code.',
+        },
+        {
+          text: 'Wait for the confirmation, then hang up.',
+          sub: 'Your carrier will confirm that forwarding is active.',
+        },
+      ],
+      note: 'For BT landlines, call forwarding is set up differently — dial 21 followed by the number, then press #. Contact BT support if this doesn\'t work.',
+      cancelCode: '##21#',
+    },
+    australia: {
+      steps: [
+        {
+          text: 'On your current phone, open the dialer.',
+          sub: 'Works on Telstra, Optus, Vodafone AU, and most Australian carriers.',
+        },
+        {
+          text: 'Dial the following code, then press Call.',
+          sub: 'This is the standard GSM unconditional forwarding code.',
+        },
+        {
+          text: 'Wait for the confirmation, then hang up.',
+          sub: 'You should hear a tone or get an SMS confirming forwarding is active.',
+        },
+      ],
+      note: 'For Telstra landlines, you may need to call 12 + the destination number, or contact Telstra to enable call diversion on your service.',
+      cancelCode: '##21#',
+    },
     other: {
       steps: [
         {
-          text: 'On your current business phone, open the dialer.',
-          sub: 'This is the phone number your patients call today.',
+          text: 'On your current phone, open the dialer.',
+          sub: 'This is the phone number your callers reach today.',
         },
         {
-          text: 'Most US carriers use this code to turn on call forwarding — dial it, then press Call.',
-          sub: 'You should hear a confirmation tone or message.',
+          text: 'Dial the following code, then press Call.',
+          sub: 'This is the international GSM standard for unconditional call forwarding.',
         },
         {
-          text: "If *72 doesn't work, check your carrier's website for \"unconditional call forwarding\" or call their support line.",
+          text: "If this doesn't work, go to your phone's Settings \u2192 Call Forwarding, or contact your carrier for help with \"unconditional call forwarding.\"",
         },
       ],
-      note: "Not sure which carrier you have? Look at the top of your phone screen — it shows your carrier name next to the signal bars.",
-      cancelCode: '*73',
+      note: "Most mobile carriers worldwide support the **21* code. US carriers (AT&T, Verizon, T-Mobile) use *72 instead — select your carrier tab above for specific instructions.",
+      cancelCode: '##21#',
     },
   }
 }
@@ -116,32 +176,53 @@ function buildInstructions(formattedNumber: string): Record<CarrierId, CarrierIn
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Formats an E.164 number for display inside the code pill.
- * US numbers (+1XXXXXXXXXX) → *72 (XXX) XXX-XXXX
- * Non-US numbers           → *72 <full number>
- */
-function formatCodeDisplay(e164: string): string {
-  const usMatch = e164.match(/^\+1(\d{3})(\d{3})(\d{4})$/)
-  if (usMatch) {
-    return `*72 (${usMatch[1]}) ${usMatch[2]}-${usMatch[3]}`
-  }
-  // Non-US: strip the leading + for dialing string but show full number
-  return `*72 ${e164.replace(/^\+/, '')}`
+/** Check if an E.164 number is a US/Canada number */
+function isUSNumber(e164: string): boolean {
+  return /^\+1\d{10}$/.test(e164)
+}
+
+/** Get the forwarding dial prefix for a carrier */
+function getForwardPrefix(carrierId: CarrierId): string {
+  // US carriers use *72, rest of world uses **21* (GSM standard)
+  if (carrierId === 'att' || carrierId === 'verizon' || carrierId === 'tmobile') return '*72'
+  return '**21*'
+}
+
+/** Get the forwarding dial suffix for a carrier */
+function getForwardSuffix(carrierId: CarrierId): string {
+  // GSM codes need a trailing #
+  if (carrierId === 'att' || carrierId === 'verizon' || carrierId === 'tmobile') return ''
+  return '#'
 }
 
 /**
- * Produces the paste-friendly dial string: *72 followed by digits only.
- * US (+1XXXXXXXXXX) → *721XXXXXXXXXX (keep country code for copy)
- * Actually the spec says strip +1 prefix for US, giving *72XXXXXXXXXX.
+ * Formats an E.164 number for display inside the code pill.
+ * US carriers:     *72 (XXX) XXX-XXXX
+ * International:   **21*+XXXXXXXXXXX#
  */
-function formatCodeCopy(e164: string): string {
-  const usMatch = e164.match(/^\+1(\d{10})$/)
-  if (usMatch) {
-    return `*72${usMatch[1]}`
+function formatCodeDisplay(e164: string, carrierId: CarrierId): string {
+  const prefix = getForwardPrefix(carrierId)
+  const suffix = getForwardSuffix(carrierId)
+  const usMatch = e164.match(/^\+1(\d{3})(\d{3})(\d{4})$/)
+  if (usMatch && (carrierId === 'att' || carrierId === 'verizon' || carrierId === 'tmobile')) {
+    return `${prefix} (${usMatch[1]}) ${usMatch[2]}-${usMatch[3]}`
   }
-  // Non-US: full number without the +
-  return `*72${e164.replace(/^\+/, '')}`
+  return `${prefix}${e164.replace(/^\+/, '')}${suffix}`
+}
+
+/**
+ * Produces the paste-friendly dial string.
+ * US carriers:     *72XXXXXXXXXX
+ * International:   **21*XXXXXXXXXXX#
+ */
+function formatCodeCopy(e164: string, carrierId: CarrierId): string {
+  const prefix = getForwardPrefix(carrierId)
+  const suffix = getForwardSuffix(carrierId)
+  const usMatch = e164.match(/^\+1(\d{10})$/)
+  if (usMatch && (carrierId === 'att' || carrierId === 'verizon' || carrierId === 'tmobile')) {
+    return `${prefix}${usMatch[1]}`
+  }
+  return `${prefix}${e164.replace(/^\+/, '')}${suffix}`
 }
 
 // ---------------------------------------------------------------------------
@@ -201,7 +282,14 @@ export function CallForwardingGuide({ voicecraftNumber, agentId }: CallForwardin
 
   // Default to expanded; hydrate from localStorage after mount to avoid SSR mismatch
   const [expanded, setExpanded] = useState(true)
-  const [activeCarrier, setActiveCarrier] = useState<CarrierId>('other')
+  // Default to a sensible tab based on the provisioned number's country code
+  const [activeCarrier, setActiveCarrier] = useState<CarrierId>(() => {
+    if (voicecraftNumber.startsWith('+1')) return 'other' // US — user picks their carrier
+    if (voicecraftNumber.startsWith('+91')) return 'india'
+    if (voicecraftNumber.startsWith('+44')) return 'uk'
+    if (voicecraftNumber.startsWith('+61')) return 'australia'
+    return 'other'
+  })
 
   useEffect(() => {
     try {
@@ -226,9 +314,9 @@ export function CallForwardingGuide({ voicecraftNumber, agentId }: CallForwardin
     [storageKey],
   )
 
-  const displayCode = formatCodeDisplay(voicecraftNumber)
-  const copyCode = formatCodeCopy(voicecraftNumber)
-  const allInstructions = buildInstructions(displayCode)
+  const displayCode = formatCodeDisplay(voicecraftNumber, activeCarrier)
+  const copyCode = formatCodeCopy(voicecraftNumber, activeCarrier)
+  const allInstructions = buildInstructions(displayCode, voicecraftNumber)
   const current = allInstructions[activeCarrier]
 
   // ---------------------------------------------------------------------------
