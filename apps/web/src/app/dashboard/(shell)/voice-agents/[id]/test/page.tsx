@@ -8,7 +8,7 @@ interface PageProps {
   params: Promise<{ id: string }>
 }
 
-export const metadata = { title: 'Test Call — VoiceCraft' }
+export const metadata = { title: 'Test Call' }
 
 export default async function VoiceAgentTestPage({ params }: PageProps) {
   const session = await auth()

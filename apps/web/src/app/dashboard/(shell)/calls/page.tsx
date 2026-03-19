@@ -4,7 +4,7 @@ import { prisma } from '@voicecraft/db'
 import { CallsList } from '@/components/calls/CallsList'
 import type { CallCardData } from '@/components/calls/CallCard'
 
-export const metadata = { title: 'Calls — VoiceCraft' }
+export const metadata = { title: 'Calls' }
 
 function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())

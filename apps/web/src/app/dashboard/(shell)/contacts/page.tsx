@@ -4,7 +4,7 @@ import { prisma } from '@voicecraft/db'
 import { ContactsClient } from '@/components/contacts/ContactsClient'
 import type { ContactCardData } from '@/components/contacts/ContactCard'
 
-export const metadata = { title: 'Contacts — VoiceCraft' }
+export const metadata = { title: 'Contacts' }
 
 export default async function ContactsPage() {
   const session = await auth()

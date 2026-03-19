@@ -9,6 +9,8 @@ interface PageProps {
   params: Promise<{ id: string }>
 }
 
+export const metadata = { title: 'Connect Calendar' }
+
 export default async function ConnectCalendarPage({ params }: PageProps) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')

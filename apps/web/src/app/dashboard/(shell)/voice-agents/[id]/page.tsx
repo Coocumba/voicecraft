@@ -19,6 +19,8 @@ interface PageProps {
   searchParams: Promise<{ new?: string; tested?: string }>
 }
 
+export const metadata = { title: 'Agent Details' }
+
 function isAgentConfig(value: unknown): value is AgentConfig {
   return typeof value === 'object' && value !== null
 }

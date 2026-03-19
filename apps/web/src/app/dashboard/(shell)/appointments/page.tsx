@@ -6,7 +6,7 @@ import { AppointmentsClient } from '@/components/appointments/AppointmentsClient
 import type { AppointmentData } from '@/components/appointments/AppointmentCard'
 import { CalendarConnectButtons } from '@/components/integrations/CalendarConnectButtons'
 
-export const metadata = { title: 'Appointments — VoiceCraft' }
+export const metadata = { title: 'Appointments' }
 
 export default async function AppointmentsPage() {
   const session = await auth()

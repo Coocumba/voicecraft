@@ -3,6 +3,8 @@ import Link from "next/link"
 import { prisma } from "@voicecraft/db"
 import { hashToken } from "@/lib/tokens"
 
+export const metadata = { title: 'Verify Email' }
+
 interface Props {
   searchParams: Promise<{ token?: string }>
 }

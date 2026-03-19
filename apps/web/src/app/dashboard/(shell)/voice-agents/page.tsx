@@ -5,7 +5,7 @@ import { prisma, AgentStatus } from '@voicecraft/db'
 import { formatDate } from '@/lib/date-utils'
 import { VoiceAgentsEmptyState } from '@/components/agents/VoiceAgentsEmptyState'
 
-export const metadata = { title: 'Voice Agents — VoiceCraft' }
+export const metadata = { title: 'Voice Agents' }
 
 function statusDotClass(status: AgentStatus) {
   switch (status) {

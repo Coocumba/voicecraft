@@ -8,6 +8,8 @@ interface PageProps {
   params: Promise<{ id: string }>
 }
 
+export const metadata = { title: 'Choose a Number' }
+
 export default async function ChooseNumberPage({ params }: PageProps) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')

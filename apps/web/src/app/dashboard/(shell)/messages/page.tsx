@@ -3,6 +3,8 @@ import { auth } from '@/auth'
 import { prisma, MessagingStatus, MessageChannel } from '@voicecraft/db'
 import { MessagesClient } from '@/components/messages/MessagesClient'
 
+export const metadata = { title: 'Messages' }
+
 export default async function MessagesPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')

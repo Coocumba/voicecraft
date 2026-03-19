@@ -3,7 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { prisma } from '@voicecraft/db'
 import { NewVoiceAgentClient } from '@/components/builder/NewVoiceAgentClient'
 
-export const metadata = { title: 'Edit Agent — VoiceCraft' }
+export const metadata = { title: 'Edit Agent' }
 
 interface PageProps {
   params: Promise<{ id: string }>

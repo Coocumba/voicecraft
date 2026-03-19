@@ -2,7 +2,7 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { NewVoiceAgentClient } from '@/components/builder/NewVoiceAgentClient'
 
-export const metadata = { title: 'New Agent — VoiceCraft' }
+export const metadata = { title: 'New Agent' }
 
 interface PageProps {
   searchParams: Promise<{
