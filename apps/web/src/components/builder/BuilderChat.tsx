@@ -33,7 +33,7 @@ const NEW_GREETING =
 
 function editGreeting(name?: string): string {
   if (name) {
-    return `Welcome back! I've got **${name}**'s current setup loaded. What would you like to change?`
+    return `Welcome back! You're editing **${name}**. What would you like to change?`
   }
   return "Welcome back! I already have your agent's current setup. Just tell me what you'd like to change."
 }
