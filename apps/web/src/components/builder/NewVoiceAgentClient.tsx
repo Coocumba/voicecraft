@@ -11,6 +11,7 @@ interface NewVoiceAgentClientProps {
   agentId?: string
   agentName?: string
   editMode?: boolean
+  isLive?: boolean
 }
 
 export function NewVoiceAgentClient({
@@ -19,6 +20,7 @@ export function NewVoiceAgentClient({
   agentId,
   agentName,
   editMode,
+  isLive,
 }: NewVoiceAgentClientProps) {
   const [topicsCovered, setTopicsCovered] = useState(0)
 
@@ -36,6 +38,13 @@ export function NewVoiceAgentClient({
         {!editMode && <ProgressDots total={5} current={topicsCovered} />}
         {editMode && <span className="text-xs text-muted">Editing</span>}
       </div>
+
+      {/* Live agent warning */}
+      {editMode && isLive && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-2.5 flex items-center gap-2">
+          <span className="text-amber-600 text-xs font-medium">This agent is live and handling calls. Changes will apply to the next call.</span>
+        </div>
+      )}
 
       {/* Chat fills remaining height */}
       <div className="flex-1 min-h-0">

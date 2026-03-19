@@ -24,6 +24,7 @@ export default async function EditVoiceAgentPage({ params }: PageProps) {
       agentId={agent.id}
       agentName={agent.name}
       editMode
+      isLive={agent.status === 'ACTIVE'}
     />
   )
 }
