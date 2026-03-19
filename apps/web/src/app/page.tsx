@@ -133,7 +133,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Features */}
-      <section id="features" className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+      <section id="features" className="scroll-mt-20 max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
         <div className="text-center mb-8 sm:mb-10">
           <h2 className="font-serif text-2xl sm:text-3xl text-ink mb-3">
             What your AI receptionist can do
@@ -159,7 +159,7 @@ export default async function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+      <section id="how-it-works" className="scroll-mt-20 max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
         <div className="text-center mb-6 sm:mb-8">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted mb-3">
             How it works
