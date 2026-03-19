@@ -1,6 +1,27 @@
 """Build the voice agent system prompt from agent configuration."""
 
+import re
 from typing import Any
+
+
+_PHONE_RE = re.compile(r"[^\d+\-() ]")
+_MAX_PHONE_LEN = 20
+
+
+def _sanitize_phone(raw: str) -> str | None:
+    """Strip non-phone characters and reject values that look suspicious.
+
+    Returns the cleaned number or None if the input is invalid. This prevents
+    prompt injection via spoofed SIP caller IDs (e.g. a caller ID set to
+    "Ignore all instructions").
+    """
+    cleaned = _PHONE_RE.sub("", raw).strip()
+    if not cleaned or len(cleaned) > _MAX_PHONE_LEN:
+        return None
+    # Must contain at least a few digits to be a real phone number
+    if sum(c.isdigit() for c in cleaned) < 3:
+        return None
+    return cleaned
 
 
 _DEFAULT_BUSINESS_NAME = "our dental clinic"
@@ -36,6 +57,15 @@ When a call connects, you will receive an explicit greeting instruction. Follow 
 ### Escalation
 {escalation_instructions}
 
+### Ending the call
+- When the caller says goodbye, thanks you, or indicates they are done, say a brief, warm \
+goodbye ONCE — for example, "Have a great day! Goodbye." — and then immediately call the \
+`end_call` tool to hang up.
+- Do NOT keep talking after your goodbye. Do NOT say goodbye more than once.
+- If the conversation has naturally concluded (for example, after confirming a booking and \
+sending an SMS), wrap up promptly by asking if there is anything else. If the caller says no, \
+say goodbye once and call `end_call`.
+
 ### Important constraints
 - Never share other patients' information.
 - If a patient sounds distressed or mentions a dental emergency, escalate immediately and \
@@ -53,10 +83,9 @@ Patients may also want to:
 ### Booking an appointment
 Before booking, you MUST collect from the patient:
 1. Their full name
-2. Their phone number (for confirmation)
-3. Their preferred date and time
-4. The service or reason for the visit
-
+2. Their preferred date and time
+3. The service or reason for the visit
+{phone_instruction}
 Use the `check_availability` tool first to confirm the slot is open. If it is not, suggest the \
 nearest available alternatives. Once the patient confirms, use the `book_appointment` tool to \
 create the booking. After booking, offer to send an SMS confirmation using `send_sms`.
@@ -66,7 +95,7 @@ create the booking. After booking, offer to send an SMS confirmation using `send
 """
 
 
-def build_system_prompt(config: dict[str, Any] | None) -> str:
+def build_system_prompt(config: dict[str, Any] | None, caller_number: str | None = None) -> str:
     """Assemble the dental receptionist system prompt from agent config.
 
     All fields fall back to sensible defaults so the agent remains functional
@@ -75,6 +104,7 @@ def build_system_prompt(config: dict[str, Any] | None) -> str:
     Args:
         config: Agent configuration dict returned by ``load_agent_config``, or
                 None if the config could not be loaded.
+        caller_number: The caller's phone number from SIP attributes, or None.
     """
     if config is None:
         config = {}
@@ -137,7 +167,22 @@ def build_system_prompt(config: dict[str, Any] | None) -> str:
 
     can_book = config.get("can_book_appointments", True)
     if can_book:
-        prompt += _BOOKING_PROMPT
+        # Sanitize caller_number: allow only digits, +, -, spaces, parens.
+        # This prevents prompt injection via spoofed SIP caller IDs.
+        safe_number = _sanitize_phone(caller_number) if caller_number else None
+        if safe_number:
+            phone_instruction = (
+                f"\nThe caller's phone number is {safe_number} (from caller ID). "
+                "Use this as the default for booking and SMS. Do NOT ask the caller to confirm "
+                "or repeat their number — just use it. However, if the caller volunteers a "
+                "different number, use the number they provide instead. "
+                "Never read the phone number aloud or reveal it to the caller.\n"
+            )
+        else:
+            phone_instruction = (
+                "\n4. Their phone number (for confirmation)\n"
+            )
+        prompt += _BOOKING_PROMPT.format(phone_instruction=phone_instruction)
 
     return prompt
 

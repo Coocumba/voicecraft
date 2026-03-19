@@ -18,7 +18,8 @@ from typing import Any
 
 import httpx
 import structlog
-from livekit.agents import function_tool, RunContext
+from livekit import api
+from livekit.agents import function_tool, get_job_context, RunContext
 
 logger = structlog.get_logger(__name__)
 
@@ -219,3 +220,42 @@ async def send_sms(
         return "The confirmation SMS has been sent to your phone."
     except RuntimeError as exc:
         return f"I was unable to send the SMS. {exc}"
+
+
+_hangup_in_progress: set[str] = set()
+
+
+@function_tool()
+async def end_call(
+    context: RunContext,  # type: ignore[type-arg]
+) -> str:
+    """End the phone call. Call this tool AFTER you have said your final goodbye.
+
+    Use this when:
+    - The caller says goodbye, thanks you, or indicates they are done.
+    - The conversation has naturally concluded (e.g. after booking confirmation).
+    - The caller explicitly asks to hang up or end the call.
+
+    IMPORTANT: Say your brief goodbye FIRST, then call this tool. Do NOT speak
+    after calling this tool — the call will disconnect.
+    """
+    ctx = get_job_context()
+    if ctx is None:
+        return ""
+
+    room_name = ctx.room.name
+
+    # Guard against duplicate hangup calls (LLM may invoke this multiple times)
+    if room_name in _hangup_in_progress:
+        return ""
+    _hangup_in_progress.add(room_name)
+
+    try:
+        await context.wait_for_playout()
+        await ctx.api.room.delete_room(
+            api.DeleteRoomRequest(room=room_name)
+        )
+    finally:
+        _hangup_in_progress.discard(room_name)
+
+    return ""

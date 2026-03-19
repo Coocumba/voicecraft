@@ -23,6 +23,7 @@ Architecture
 
 from __future__ import annotations
 
+import asyncio
 import os
 import time
 from typing import Any
@@ -35,7 +36,7 @@ from livekit.agents import AgentServer, AgentSession, Agent, JobContext, cli
 from src.agent.config_loader import load_agent_config
 from src.agent.plugins import create_stt, create_llm, create_tts
 from src.agent.prompts import build_caller_context_suffix, build_system_prompt, get_greeting
-from src.agent.tools import book_appointment, check_availability, send_sms
+from src.agent.tools import book_appointment, check_availability, end_call, send_sms
 
 _WEB_URL = os.environ.get("VOICECRAFT_WEB_URL", "http://localhost:3000").rstrip("/")
 _API_KEY = os.environ.get("VOICECRAFT_API_KEY", "")
@@ -76,7 +77,7 @@ class DentalReceptionist(Agent):
 
     def __init__(self, instructions: str, tools: list | None = None) -> None:
         if tools is None:
-            tools = [check_availability, book_appointment, send_sms]
+            tools = [check_availability, book_appointment, send_sms, end_call]
         super().__init__(
             instructions=instructions,
             tools=tools,
@@ -249,7 +250,7 @@ async def entrypoint(ctx: JobContext) -> None:
         contact, appointments = await _lookup_contact(agent_id, caller_number)
 
     # -- Build session components -----------------------------------------------
-    system_prompt = build_system_prompt(config)
+    system_prompt = build_system_prompt(config, caller_number=caller_number)
     system_prompt += build_caller_context_suffix(contact, appointments)
 
     greeting = get_greeting(config, contact)
@@ -259,13 +260,14 @@ async def entrypoint(ctx: JobContext) -> None:
     voice_settings = _resolve_voice_settings(config) if config else None
 
     # Build tools list dynamically based on agent capabilities.
-    agent_tools = [send_sms]
+    agent_tools = [send_sms, end_call]
     if config and config.get("can_book_appointments", True):
         agent_tools += [check_availability, book_appointment]
 
     userdata = {
         "agent_id": agent_id or "",
         "timezone": config.get("timezone", "UTC") if config else "UTC",
+        "caller_number": caller_number or "",
     }
 
     session = AgentSession(
@@ -280,8 +282,6 @@ async def entrypoint(ctx: JobContext) -> None:
     call_start = time.monotonic()
 
     # Log the call when the session shuts down
-    import asyncio
-
     @session.on("close")
     def _on_session_close() -> None:
         if not agent_id:
