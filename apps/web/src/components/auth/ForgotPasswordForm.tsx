@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 
 export function ForgotPasswordForm() {
   const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">("idle")
@@ -30,9 +31,9 @@ export function ForgotPasswordForm() {
         <p className="text-sm text-ink mb-4">
           If an account exists for that email, we&apos;ve sent a reset link. Check your inbox.
         </p>
-        <a href="/login" className="text-accent text-sm hover:underline">
+        <Link href="/login" className="text-accent text-sm hover:underline">
           Back to sign in
-        </a>
+        </Link>
       </div>
     )
   }
@@ -63,7 +64,7 @@ export function ForgotPasswordForm() {
         {status === "loading" ? "Sending…" : "Send reset link"}
       </button>
       <p className="text-center text-sm text-muted">
-        <a href="/login" className="text-accent hover:underline">Back to sign in</a>
+        <Link href="/login" className="text-accent hover:underline">Back to sign in</Link>
       </p>
     </form>
   )

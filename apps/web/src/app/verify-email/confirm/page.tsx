@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { prisma } from "@voicecraft/db"
 import { hashToken } from "@/lib/tokens"
 
@@ -60,11 +61,11 @@ function ErrorState({ message }: { message: string }) {
         </div>
         <h1 className="font-serif text-2xl text-ink mb-3">Link problem</h1>
         <p className="text-muted text-sm mb-6">{message}</p>
-        <a href="/verify-email" className="text-accent text-sm hover:underline">
+        <Link href="/verify-email" className="text-accent text-sm hover:underline">
           Request a new verification email
-        </a>
+        </Link>
         <p className="mt-4 text-sm text-muted">
-          <a href="/login" className="text-accent hover:underline">Back to sign in</a>
+          <Link href="/login" className="text-accent hover:underline">Back to sign in</Link>
         </p>
       </div>
     </main>

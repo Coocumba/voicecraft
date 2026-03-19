@@ -1,4 +1,5 @@
 import { Suspense } from "react"
+import Link from "next/link"
 import { prisma } from "@voicecraft/db"
 import { hashToken } from "@/lib/tokens"
 import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm"
@@ -47,7 +48,7 @@ export default async function ResetPasswordPage({ searchParams }: Props) {
         </Suspense>
         {!isValid && (
           <p className="text-center text-sm text-muted mt-4">
-            <a href="/login" className="text-accent hover:underline">Back to sign in</a>
+            <Link href="/login" className="text-accent hover:underline">Back to sign in</Link>
           </p>
         )}
       </div>

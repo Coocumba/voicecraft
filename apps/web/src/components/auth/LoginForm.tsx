@@ -2,6 +2,7 @@
 
 import { useActionState } from "react"
 import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { authenticate } from "@/app/login/actions"
 import { signIn } from "next-auth/react"
 
@@ -51,9 +52,9 @@ export function LoginForm() {
         {state?.error === "EMAIL_NOT_VERIFIED" ? (
           <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
             Please verify your email.{" "}
-            <a href="/verify-email" className="underline font-medium">
+            <Link href="/verify-email" className="underline font-medium">
               Resend verification email
-            </a>
+            </Link>
           </p>
         ) : state?.error ? (
           <p className="text-sm text-red-500">{state.error}</p>
@@ -78,9 +79,9 @@ export function LoginForm() {
             <label htmlFor="password" className="block text-sm font-medium text-ink">
               Password
             </label>
-            <a href="/forgot-password" className="text-xs text-accent hover:underline">
+            <Link href="/forgot-password" className="text-xs text-accent hover:underline">
               Forgot password?
-            </a>
+            </Link>
           </div>
           <input
             id="password"
@@ -103,9 +104,9 @@ export function LoginForm() {
 
       <p className="text-center text-sm text-muted">
         Don&apos;t have an account?{" "}
-        <a href="/signup" className="text-accent hover:underline">
+        <Link href="/signup" className="text-accent hover:underline">
           Create one
-        </a>
+        </Link>
       </p>
     </div>
   )

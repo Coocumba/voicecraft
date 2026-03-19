@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 
 export default function VerifyEmailPage() {
   const [step, setStep] = useState<"info" | "form" | "sending" | "sent" | "error">("info")
@@ -77,7 +78,7 @@ export default function VerifyEmailPage() {
         )}
 
         <p className="mt-6 text-sm text-muted">
-          <a href="/login" className="text-accent hover:underline">Back to sign in</a>
+          <Link href="/login" className="text-accent hover:underline">Back to sign in</Link>
         </p>
       </div>
     </main>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useActionState } from "react"
+import Link from "next/link"
 import { signup } from "@/app/signup/actions"
 import { signIn } from "next-auth/react"
 
@@ -91,9 +92,9 @@ export function SignupForm() {
 
       <p className="text-center text-sm text-muted">
         Already have an account?{" "}
-        <a href="/login" className="text-accent hover:underline">
+        <Link href="/login" className="text-accent hover:underline">
           Sign in
-        </a>
+        </Link>
       </p>
     </div>
   )

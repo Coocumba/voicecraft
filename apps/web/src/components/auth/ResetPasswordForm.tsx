@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 
 interface Props {
   isValid: boolean
@@ -20,9 +21,9 @@ export function ResetPasswordForm({ isValid, errorMessage }: Props) {
     return (
       <div className="text-center">
         <p className="text-sm text-red-500 mb-4">{errorMessage}</p>
-        <a href="/forgot-password" className="text-accent text-sm hover:underline">
+        <Link href="/forgot-password" className="text-accent text-sm hover:underline">
           Request a new reset link
-        </a>
+        </Link>
       </div>
     )
   }
