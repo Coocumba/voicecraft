@@ -35,7 +35,7 @@ export function CallsFilterBar({
   return (
     <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
       {/* Agent dropdown */}
-      <div className="relative flex-shrink-0">
+      <div className="relative w-fit">
         <label htmlFor="agent-filter" className="sr-only">
           Filter by agent
         </label>
@@ -43,7 +43,7 @@ export function CallsFilterBar({
           id="agent-filter"
           value={selectedAgentId}
           onChange={(e) => onAgentChange(e.target.value)}
-          className="appearance-none bg-white border border-border rounded-lg pl-3 pr-8 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors cursor-pointer"
+          className="appearance-none w-auto bg-white border border-border rounded-lg pl-3 pr-8 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors cursor-pointer"
         >
           <option value="">All agents</option>
           {agents.map((agent) => (

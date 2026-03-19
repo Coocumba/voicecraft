@@ -208,8 +208,7 @@ export function TestCallClient({ agent }: TestCallClientProps) {
             <div className="bg-white rounded-xl border border-border p-5 mb-8 text-left w-full">
               <p className="text-xs text-muted font-semibold uppercase tracking-wider mb-2">About this test</p>
               <p className="text-sm text-ink leading-relaxed">
-                This will connect you to your voice agent via WebRTC. You&apos;ll be able to speak
-                and hear the agent respond in real-time. Make sure your microphone is enabled.
+                Talk to your agent just like a real phone call. Make sure your microphone is allowed when your browser asks.
               </p>
             </div>
 
