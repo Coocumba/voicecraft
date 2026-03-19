@@ -287,11 +287,22 @@ async def entrypoint(ctx: JobContext) -> None:
         if not agent_id:
             return
         duration = int(time.monotonic() - call_start)
+
+        # Build transcript from chat history
+        transcript_lines: list[str] = []
+        for message in session.history.messages():
+            text = message.text_content
+            if text:
+                label = "Caller" if message.role == "user" else "Agent"
+                transcript_lines.append(f"[{label}] {text}")
+        transcript = "\n".join(transcript_lines) if transcript_lines else None
+
         asyncio.create_task(_log_call(
             agent_id=agent_id,
             duration_secs=duration,
             outcome="COMPLETED",
             caller_number=caller_number,
+            transcript=transcript,
         ))
 
     await session.start(agent=agent, room=ctx.room)
