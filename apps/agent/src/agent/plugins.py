@@ -11,19 +11,17 @@ logger = structlog.get_logger(__name__)
 def create_stt(language: str | None = None):
     """Return a Deepgram Nova-3 STT plugin instance.
 
+    Uses multi-language detection so the agent can understand callers
+    speaking any language, regardless of the configured default.
+
     Args:
-        language: BCP-47 language code (e.g. "en", "es", "hi"). If provided,
-                  Deepgram will transcribe in that language. If None or "en",
-                  defaults to English.
+        language: Default language code from agent config. Logged for
+                  observability but STT always uses multi-language mode.
     """
     from livekit.plugins import deepgram
 
-    kwargs: dict[str, str] = {"model": "nova-3"}
-    if language and language.lower() not in ("en", "english"):
-        kwargs["language"] = language.lower()
-        logger.info("stt_language_set", language=language)
-
-    return deepgram.STT(**kwargs)
+    logger.info("stt_created", default_language=language or "en", mode="multi")
+    return deepgram.STT(model="nova-3", language="multi")
 
 
 def create_llm(system_prompt: str):
