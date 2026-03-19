@@ -94,7 +94,7 @@ export default async function CallsPage() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-xl border border-border p-5">
           <p className="text-xs text-muted font-medium mb-1">Today</p>
           <p className="font-serif text-3xl text-ink">{todayCount}</p>

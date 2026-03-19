@@ -44,7 +44,7 @@ export default async function VoiceAgentsPage() {
 
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between gap-4 mb-8">
         <h1 className="font-serif text-2xl sm:text-3xl text-ink">Voice Agents</h1>
         <Link
           href="/dashboard/voice-agents/new"

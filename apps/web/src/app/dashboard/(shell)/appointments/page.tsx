@@ -97,7 +97,7 @@ export default async function AppointmentsPage() {
       <h1 className="font-serif text-2xl sm:text-3xl text-ink mb-8">Appointments</h1>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-xl border border-border p-5">
           <p className="text-xs text-muted font-medium mb-1">Today</p>
           <p className="font-serif text-3xl text-ink">{todayCount}</p>
@@ -114,9 +114,9 @@ export default async function AppointmentsPage() {
 
       {/* Calendar nudge banner */}
       {!hasCalendarIntegration && (
-        <div className="flex items-center justify-between bg-accent/5 border border-accent/20 rounded-xl px-5 py-3 text-sm text-accent mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-accent/5 border border-accent/20 rounded-xl px-5 py-3 text-sm text-accent mb-6">
           <span>Connect your calendar to avoid double-bookings and sync appointments automatically.</span>
-          <div className="ml-4 flex-shrink-0">
+          <div className="flex-shrink-0">
             <CalendarConnectButtons returnTo="/dashboard/appointments" />
           </div>
         </div>
