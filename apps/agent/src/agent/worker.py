@@ -110,7 +110,9 @@ async def _log_call(
         if summary:
             payload["summary"] = summary
 
-        async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
+        logger.debug("call_log_posting", agent_id=agent_id, url=f"{_WEB_URL}/api/calls",
+                     has_api_key=bool(_API_KEY))
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
             resp = await client.post(
                 f"{_WEB_URL}/api/calls",
                 json=payload,
@@ -286,9 +288,13 @@ async def entrypoint(ctx: JobContext) -> None:
     # Log the call when the session shuts down
     @session.on("close")
     def _on_session_close() -> None:
-        if not agent_id:
-            return
         duration = int(time.monotonic() - call_start)
+        if not agent_id:
+            log.warning("call_not_logged", reason="no agent_id", duration=duration,
+                        caller_number=caller_number)
+            return
+        log.info("call_ended", agent_id=agent_id, duration=duration,
+                 caller_number=caller_number)
 
         # Build transcript from chat history
         transcript_lines: list[str] = []
