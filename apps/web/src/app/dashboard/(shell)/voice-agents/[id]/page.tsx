@@ -111,7 +111,7 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-6 gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:justify-between mb-6 gap-4">
         <div>
           <Link
             href="/dashboard/voice-agents"
@@ -144,7 +144,7 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
 
       {/* Undeployed nudge — context-aware: phone number first, then deploy */}
       {isDraft && (
-        <div id="deploy-section" className="flex items-center justify-between bg-accent/5 border border-accent/20 rounded-xl px-5 py-3 text-sm text-accent mb-6">
+        <div id="deploy-section" className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-accent/5 border border-accent/20 rounded-xl px-5 py-3 text-sm text-accent mb-6 gap-3">
           <span>{agent.phoneNumber ? 'This agent isn\u0027t live yet.' : 'Add a phone number to go live.'}</span>
           <a
             href={agent.phoneNumber ? '#agent-header-actions' : '#phone-number-section'}
@@ -156,7 +156,7 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-xl border border-border p-5">
           <p className="text-xs text-muted font-medium mb-1">Total Calls</p>
           <p className="font-serif text-3xl text-ink">{agent._count.calls}</p>
@@ -173,9 +173,9 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
 
       {/* Calendar warning banner */}
       {needsCalendar && (
-        <div className="flex items-center justify-between bg-accent/5 border border-accent/20 rounded-xl px-5 py-3 text-sm text-accent mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-accent/5 border border-accent/20 rounded-xl px-5 py-3 text-sm text-accent mb-8 gap-3">
           <span>Your agent offers placeholder availability because your calendar isn&apos;t connected.</span>
-          <div className="ml-4 flex-shrink-0">
+          <div className="flex-shrink-0">
             <CalendarConnectButtons returnTo={`/dashboard/voice-agents/${agent.id}`} />
           </div>
         </div>
@@ -226,7 +226,7 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
         ) : (
           <div className="bg-white rounded-xl border border-border overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
                     <th className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Date</th>
