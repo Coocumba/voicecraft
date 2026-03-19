@@ -17,6 +17,7 @@ async function main() {
       email,
       name: "Admin",
       passwordHash: hashSync("password123", 10),
+      emailVerified: new Date(),
     },
   })
 

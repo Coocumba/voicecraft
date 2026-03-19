@@ -8,17 +8,20 @@ datasource db {
 }
 
 model User {
-  id            String                @id @default(cuid())
-  email         String                @unique
-  name          String?
-  passwordHash  String
-  agents        Agent[]
-  conversations BuilderConversation[]
-  integrations  Integration[]
-  contacts      Contact[]
-  phoneNumbers  PhoneNumber[]
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
+  id                      String                  @id @default(cuid())
+  email                   String                  @unique
+  name                    String?
+  passwordHash            String?
+  emailVerified           DateTime?
+  agents                  Agent[]
+  conversations           BuilderConversation[]
+  integrations            Integration[]
+  contacts                Contact[]
+  phoneNumbers            PhoneNumber[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
 }
 
 model Agent {
@@ -249,4 +252,26 @@ model Message {
   createdAt      DateTime         @default(now())
 
   @@index([conversationId, createdAt])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
