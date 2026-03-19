@@ -15,8 +15,11 @@ export class EmailNotVerifiedError extends CredentialsSignin {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   providers: [
-    Google,
+    Google({
+      authorization: { params: { prompt: "select_account" } },
+    }),
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
