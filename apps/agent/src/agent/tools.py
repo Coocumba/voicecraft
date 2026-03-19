@@ -12,6 +12,7 @@ them to a specific agent class. Each tool:
     the agent can relay them gracefully to the caller.
 """
 
+import asyncio
 import os
 from datetime import datetime
 from typing import Any
@@ -229,15 +230,16 @@ _hangup_in_progress: set[str] = set()
 async def end_call(
     context: RunContext,  # type: ignore[type-arg]
 ) -> str:
-    """End the phone call politely.
+    """Hang up the phone call AFTER you have said your goodbye.
+
+    You MUST say a brief, warm goodbye in your response BEFORE calling this tool.
+    For example: "Thank you for calling Rama Dentals! Have a great day. Goodbye!"
+    Make it natural and match the tone of the conversation.
 
     Use this when:
     - The caller says goodbye, thanks you, or indicates they are done.
     - The conversation has naturally concluded (e.g. after booking confirmation).
     - The caller explicitly asks to hang up or end the call.
-
-    When you call this tool, it will speak a brief goodbye and then disconnect.
-    Do NOT say goodbye yourself before calling this tool — the tool handles it.
     """
     ctx = get_job_context()
     if ctx is None:
@@ -251,9 +253,10 @@ async def end_call(
     _hangup_in_progress.add(room_name)
 
     try:
-        # Say a polite goodbye and wait for it to be spoken
-        context.session.say("Thank you for calling! Have a wonderful day. Goodbye!")
+        # Wait for the LLM's goodbye speech to finish playing
         await context.wait_for_playout()
+        # Small grace period to ensure audio is fully delivered
+        await asyncio.sleep(0.5)
         await ctx.api.room.delete_room(
             api.DeleteRoomRequest(room=room_name)
         )
