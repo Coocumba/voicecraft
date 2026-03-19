@@ -1,5 +1,7 @@
 import Link from "next/link"
 import { auth } from "@/auth"
+import { PublicHeader } from "@/components/layout/PublicHeader"
+import { PublicFooter } from "@/components/layout/PublicFooter"
 
 const features = [
   {
@@ -72,35 +74,7 @@ export default async function LandingPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-border bg-cream">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="font-serif text-lg text-ink flex-shrink-0">
-            VoiceCraft
-          </Link>
-
-          <nav className="flex items-center gap-1">
-            <a href="#features" className="hidden sm:inline-flex text-sm text-muted hover:text-ink px-2 sm:px-3 py-1.5 rounded-lg transition-colors">
-              Features
-            </a>
-            <a href="#how-it-works" className="hidden sm:inline-flex text-sm text-muted hover:text-ink px-2 sm:px-3 py-1.5 rounded-lg transition-colors">
-              How it works
-            </a>
-            <Link
-              href={ctaHref}
-              className="hidden sm:inline-flex text-sm text-muted hover:text-ink px-3 py-1.5 rounded-lg transition-colors"
-            >
-              {signInLabel}
-            </Link>
-            <Link
-              href={ctaHref}
-              className="text-sm bg-accent text-white px-4 py-1.5 rounded-lg hover:bg-accent/90 transition-colors ml-1"
-            >
-              Get started
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <PublicHeader ctaHref={ctaHref} signInLabel={signInLabel} activePage="features" />
 
       {/* Hero */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 pt-16 sm:pt-20 pb-12 sm:pb-16 text-center">
@@ -254,25 +228,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="max-w-5xl mx-auto px-4 sm:px-6 py-10 border-t border-border">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted">
-          <div className="flex items-center flex-wrap justify-center sm:justify-start gap-x-3 gap-y-1">
-            <span className="font-serif text-ink">VoiceCraft</span>
-            <span className="text-border hidden sm:inline">·</span>
-            <span>&copy; {new Date().getFullYear()} All rights reserved</span>
-          </div>
-          <div className="flex items-center flex-wrap justify-center gap-x-3 gap-y-1">
-            <a href="#features" className="hover:text-ink transition-colors">
-              Features
-            </a>
-            <span className="text-border hidden sm:inline">·</span>
-            <Link href="/login" className="hover:text-ink transition-colors">
-              Sign in
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   )
 }
