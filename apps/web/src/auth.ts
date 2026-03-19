@@ -4,6 +4,12 @@ import Google from "next-auth/providers/google"
 import bcrypt from "bcryptjs"
 import { prisma } from "@voicecraft/db"
 
+declare module "next-auth" {
+  interface User {
+    emailVerified?: Date | null
+  }
+}
+
 export class EmailNotVerifiedError extends CredentialsSignin {
   code = "EMAIL_NOT_VERIFIED" as const
 }
