@@ -1,6 +1,13 @@
 import { Resend } from "resend"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResend(): Resend {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY is not set")
+  }
+  return new Resend(apiKey)
+}
+
 const FROM = process.env.EMAIL_FROM ?? "noreply@voicecraft.dev"
 const APP_URL = process.env.APP_URL ?? "http://localhost:3000"
 
@@ -9,7 +16,7 @@ export async function sendVerificationEmail(
   rawToken: string
 ): Promise<void> {
   const url = `${APP_URL}/verify-email/confirm?token=${rawToken}`
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: "Verify your VoiceCraft email",
@@ -26,7 +33,7 @@ export async function sendPasswordResetEmail(
   rawToken: string
 ): Promise<void> {
   const url = `${APP_URL}/reset-password?token=${rawToken}`
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: "Reset your VoiceCraft password",

@@ -104,6 +104,18 @@ The Python worker runs as a LiveKit `VoicePipelineAgent` with:
 - **TTS** — ElevenLabs (with Google TTS fallback)
 - **Tools** — function calls that hit the Next.js webhook API to check availability, book appointments, and send WhatsApp confirmations
 
+### Authentication
+
+VoiceCraft uses NextAuth v5 with:
+
+- **Email/password signup** — with email verification via Resend
+- **Google OAuth** — one-click sign-in, no email verification required
+- **Password reset** — via emailed link (1-hour expiry)
+
+Demo credentials (seeded): `admin@voicecraft.dev` / `password123`
+
+**Required env vars:** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_URL`
+
 ### Integrations
 
 - Google Calendar (read availability, create bookings)
@@ -183,8 +195,11 @@ uv run python -m src.agent.worker start
 | `LIVEKIT_SIP_USERNAME` | SIP auth username for LiveKit inbound trunks |
 | `LIVEKIT_SIP_PASSWORD` | SIP auth password for LiveKit inbound trunks |
 | `VOICECRAFT_API_KEY` | Shared secret for agent-to-web authentication |
-| `GOOGLE_CLIENT_ID` | Google Calendar OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Google Calendar OAuth client secret |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID (Calendar integration + Google sign-in) |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
+| `RESEND_API_KEY` | Resend API key for email verification and password reset emails |
+| `EMAIL_FROM` | Sender address for transactional emails (e.g. `noreply@voicecraft.dev`) |
+| `APP_URL` | Public base URL used in email links (e.g. `http://localhost:3000`) |
 | `TWILIO_ACCOUNT_SID` | Twilio account SID (enables phone provisioning) |
 | `TWILIO_AUTH_TOKEN` | Twilio auth token |
 | `TWILIO_WA_CONFIRMATION_SID` | Meta-approved WhatsApp template SID for booking confirmations (optional) |
