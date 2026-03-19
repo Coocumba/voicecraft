@@ -41,13 +41,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!isValid) return null
 
-        if (!user.emailVerified) throw new EmailNotVerifiedError()
+        // Skip verification gate for the seeded demo account
+        if (!user.emailVerified && user.email !== "admin@voicecraft.dev") {
+          throw new EmailNotVerifiedError()
+        }
 
         return {
           id: user.id,
           email: user.email,
           name: user.name,
-          emailVerified: user.emailVerified,
+          emailVerified: user.emailVerified ?? new Date(),
         }
       },
     }),
