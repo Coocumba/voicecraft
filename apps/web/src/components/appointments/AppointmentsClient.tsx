@@ -107,7 +107,7 @@ export function AppointmentsClient({ appointments, agents, bookingAgents, hasCal
         {bookingAgents && bookingAgents.length > 0 && (
           <button
             onClick={() => setDrawerOpen(true)}
-            className="ml-auto bg-accent text-white px-4 py-2 rounded-lg text-sm hover:bg-accent/90 font-medium transition-colors"
+            className="w-full sm:w-auto sm:ml-auto bg-accent text-white px-4 py-2 rounded-lg text-sm hover:bg-accent/90 font-medium transition-colors"
           >
             New Appointment
           </button>

@@ -174,7 +174,7 @@ export function TopBar({ userName, userEmail }: TopBarProps) {
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
           />
-          <div className="md:hidden fixed top-14 left-0 right-0 z-30 bg-white border-b border-border shadow-sm p-3 space-y-1">
+          <div className="md:hidden fixed top-14 left-0 right-0 z-30 bg-white border-b border-border shadow-sm p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] space-y-1">
             {services.map(({ label, href, available }) => {
               if (!available) {
                 return (
