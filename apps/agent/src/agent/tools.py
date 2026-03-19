@@ -229,15 +229,15 @@ _hangup_in_progress: set[str] = set()
 async def end_call(
     context: RunContext,  # type: ignore[type-arg]
 ) -> str:
-    """End the phone call. Call this tool AFTER you have said your final goodbye.
+    """End the phone call politely.
 
     Use this when:
     - The caller says goodbye, thanks you, or indicates they are done.
     - The conversation has naturally concluded (e.g. after booking confirmation).
     - The caller explicitly asks to hang up or end the call.
 
-    IMPORTANT: Say your brief goodbye FIRST, then call this tool. Do NOT speak
-    after calling this tool — the call will disconnect.
+    When you call this tool, it will speak a brief goodbye and then disconnect.
+    Do NOT say goodbye yourself before calling this tool — the tool handles it.
     """
     ctx = get_job_context()
     if ctx is None:
@@ -251,6 +251,8 @@ async def end_call(
     _hangup_in_progress.add(room_name)
 
     try:
+        # Say a polite goodbye and wait for it to be spoken
+        context.session.say("Thank you for calling! Have a wonderful day. Goodbye!")
         await context.wait_for_playout()
         await ctx.api.room.delete_room(
             api.DeleteRoomRequest(room=room_name)
