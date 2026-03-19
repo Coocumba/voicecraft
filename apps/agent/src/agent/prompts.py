@@ -185,6 +185,17 @@ def build_system_prompt(config: dict[str, Any] | None, caller_number: str | None
             )
         prompt += _BOOKING_PROMPT.format(phone_instruction=phone_instruction)
 
+    # Language instruction: if not English, tell the agent to respond in that language.
+    language = config.get("language", "en")
+    if language and language.lower() not in ("en", "english"):
+        prompt += f"""
+
+### Language
+You MUST respond entirely in {language}. This includes greetings, questions, confirmations, \
+and goodbyes. The caller expects to communicate in {language}. Do NOT switch to English \
+unless the caller explicitly asks you to.
+"""
+
     return prompt
 
 

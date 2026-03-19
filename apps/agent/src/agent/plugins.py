@@ -8,11 +8,22 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 
-def create_stt():
-    """Return a Deepgram Nova-3 STT plugin instance."""
+def create_stt(language: str | None = None):
+    """Return a Deepgram Nova-3 STT plugin instance.
+
+    Args:
+        language: BCP-47 language code (e.g. "en", "es", "hi"). If provided,
+                  Deepgram will transcribe in that language. If None or "en",
+                  defaults to English.
+    """
     from livekit.plugins import deepgram
 
-    return deepgram.STT(model="nova-3")
+    kwargs: dict[str, str] = {"model": "nova-3"}
+    if language and language.lower() not in ("en", "english"):
+        kwargs["language"] = language.lower()
+        logger.info("stt_language_set", language=language)
+
+    return deepgram.STT(**kwargs)
 
 
 def create_llm(system_prompt: str):

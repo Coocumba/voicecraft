@@ -270,8 +270,10 @@ async def entrypoint(ctx: JobContext) -> None:
         "caller_number": caller_number or "",
     }
 
+    language = config.get("language", "en") if config else "en"
+
     session = AgentSession(
-        stt=create_stt(),
+        stt=create_stt(language=language),
         llm=create_llm(system_prompt),
         tts=create_tts(voice_settings),
         userdata=userdata,
