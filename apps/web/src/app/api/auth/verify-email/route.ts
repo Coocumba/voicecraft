@@ -25,7 +25,10 @@ export async function POST(req: Request) {
   try {
     await prisma.$transaction(async (tx) => {
       const deleted = await tx.emailVerificationToken.deleteMany({
-        where: { tokenHash },
+        where: {
+          tokenHash,
+          expiresAt: { gt: new Date() },
+        },
       })
       if (deleted.count === 0) {
         throw new Error("ALREADY_USED")
