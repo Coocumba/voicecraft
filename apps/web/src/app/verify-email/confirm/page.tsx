@@ -26,13 +26,22 @@ export default async function VerifyEmailConfirmPage({ searchParams }: Props) {
     return <ErrorState message="This link has expired." />
   }
 
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: record.userId },
-      data: { emailVerified: new Date() },
-    }),
-    prisma.emailVerificationToken.delete({ where: { tokenHash } }),
-  ])
+  try {
+    await prisma.$transaction(async (tx) => {
+      const deleted = await tx.emailVerificationToken.deleteMany({
+        where: { tokenHash },
+      })
+      if (deleted.count === 0) {
+        throw new Error("ALREADY_USED")
+      }
+      await tx.user.update({
+        where: { id: record.userId },
+        data: { emailVerified: new Date() },
+      })
+    })
+  } catch {
+    return <ErrorState message="This link has already been used or is no longer valid." />
+  }
 
   redirect("/login?verified=true")
 }

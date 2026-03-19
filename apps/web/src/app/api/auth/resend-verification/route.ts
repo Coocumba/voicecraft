@@ -16,7 +16,8 @@ export async function POST(req: Request) {
   }
 
   if (user.emailVerified) {
-    return NextResponse.json({ error: "Email is already verified" }, { status: 400 })
+    // Return success silently — don't reveal verification status
+    return NextResponse.json({ success: true })
   }
 
   // Rate limit: check if a token was created in the last 60 seconds
@@ -45,7 +46,13 @@ export async function POST(req: Request) {
     data: { userId: user.id, tokenHash, expiresAt },
   })
 
-  await sendVerificationEmail(user.email, rawToken)
+  try {
+    await sendVerificationEmail(user.email, rawToken)
+  } catch {
+    // Roll back: delete the token we just created so the user isn't rate-limited
+    await prisma.emailVerificationToken.deleteMany({ where: { userId: user.id } })
+    return NextResponse.json({ error: "Failed to send email. Please try again." }, { status: 500 })
+  }
 
   return NextResponse.json({ success: true })
 }
