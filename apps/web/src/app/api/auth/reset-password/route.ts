@@ -29,10 +29,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid or expired reset link" }, { status: 400 })
   }
 
-  if (record.expiresAt < new Date()) {
-    return NextResponse.json({ error: "This reset link has expired" }, { status: 400 })
-  }
-
   const passwordHash = hashSync(body.password, 10)
 
   try {
@@ -56,7 +52,7 @@ export async function POST(req: Request) {
     })
   } catch (err) {
     if (err instanceof Error && err.message === "ALREADY_USED") {
-      return NextResponse.json({ error: "This link has already been used" }, { status: 400 })
+      return NextResponse.json({ error: "This link is invalid or has already been used" }, { status: 400 })
     }
     throw err
   }
