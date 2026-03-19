@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import time
 from typing import Any
 
@@ -43,6 +44,18 @@ _API_KEY = os.environ.get("VOICECRAFT_API_KEY", "")
 
 logger = structlog.get_logger(__name__)
 
+# --- Startup checks -----------------------------------------------------------
+# Issue #10: warn loudly if API key is empty so misconfigured deployments are
+# caught immediately rather than silently failing all webhook calls.
+if not _API_KEY:
+    logger.warning(
+        "VOICECRAFT_API_KEY is empty — all webhook calls will be unauthenticated. "
+        "Set this env var to the same value used in the Next.js web app."
+    )
+
+# Regex for validating CUID-like agent IDs (alphanumeric, 20-30 chars)
+_AGENT_ID_RE = re.compile(r"^[a-z0-9]{20,30}$")
+
 
 def _extract_agent_id(ctx: JobContext) -> str | None:
     """Derive the agent ID from room metadata or the room name convention.
@@ -55,14 +68,24 @@ def _extract_agent_id(ctx: JobContext) -> str | None:
     fall back to generic defaults rather than failing the call.
     """
     # Metadata is the canonical source — set it from the Next.js dispatch API.
-    metadata: str = ctx.room.metadata or ""
-    if metadata.strip():
-        return metadata.strip()
+    metadata: str = (ctx.room.metadata or "").strip()
+    if metadata:
+        # Issue #12: strip whitespace from metadata
+        return metadata
 
     # Fall back to room name parsing: "voicecraft-<agent_id>-<random>"
     name_parts = ctx.room.name.split("-")
     if len(name_parts) >= 2 and name_parts[0].lower() == "voicecraft":
-        return name_parts[1]
+        candidate = name_parts[1].strip()  # Issue #12: strip whitespace
+        # Issue #4: validate the extracted ID looks like a real CUID
+        if _AGENT_ID_RE.match(candidate):
+            return candidate
+        logger.warning(
+            "agent_id_rejected",
+            candidate=candidate,
+            reason="does not match expected CUID format",
+        )
+        return None
 
     return None
 
@@ -197,6 +220,15 @@ async def _lookup_contact(agent_id: str, phone: str) -> tuple[dict[str, Any] | N
                 contact = data.get("contact")
                 appointments = data.get("appointments", empty_appts)
                 return contact, appointments
+        else:
+            # Issue #5: log API errors explicitly instead of treating them as "not found"
+            logger.warning(
+                "contact_lookup_api_error",
+                agent_id=agent_id,
+                status_code=resp.status_code,
+                body=resp.text[:256],
+            )
+            return None, empty_appts
     except Exception as exc:
         logger.warning("contact_lookup_failed", error=str(exc))
         return None, empty_appts
@@ -285,33 +317,45 @@ async def entrypoint(ctx: JobContext) -> None:
 
     call_start = time.monotonic()
 
-    # Log the call when the session shuts down
+    # Issue #1: Use an asyncio.Event to ensure the call log task completes
+    # before the session fully shuts down, even if the event loop is draining.
+    log_done = asyncio.Event()
+
+    async def _do_log_call() -> None:
+        """Async wrapper for call logging — awaited to guarantee completion."""
+        try:
+            duration = int(time.monotonic() - call_start)
+            if not agent_id:
+                log.warning("call_not_logged", reason="no agent_id", duration=duration)
+                return
+            log.info("call_ended", agent_id=agent_id, duration=duration)
+
+            # Issue #9: build transcript with a note if it may be incomplete
+            transcript_lines: list[str] = []
+            try:
+                for message in session.history.messages():
+                    text = message.text_content
+                    if text:
+                        label = "Caller" if message.role == "user" else "Agent"
+                        transcript_lines.append(f"[{label}] {text}")
+            except Exception:
+                transcript_lines.append("[System] Transcript may be incomplete.")
+
+            transcript = "\n".join(transcript_lines) if transcript_lines else None
+
+            await _log_call(
+                agent_id=agent_id,
+                duration_secs=duration,
+                outcome="COMPLETED",
+                caller_number=caller_number,
+                transcript=transcript,
+            )
+        finally:
+            log_done.set()
+
     @session.on("close")
     def _on_session_close() -> None:
-        duration = int(time.monotonic() - call_start)
-        if not agent_id:
-            log.warning("call_not_logged", reason="no agent_id", duration=duration,
-                        caller_number=caller_number)
-            return
-        log.info("call_ended", agent_id=agent_id, duration=duration,
-                 caller_number=caller_number)
-
-        # Build transcript from chat history
-        transcript_lines: list[str] = []
-        for message in session.history.messages():
-            text = message.text_content
-            if text:
-                label = "Caller" if message.role == "user" else "Agent"
-                transcript_lines.append(f"[{label}] {text}")
-        transcript = "\n".join(transcript_lines) if transcript_lines else None
-
-        asyncio.create_task(_log_call(
-            agent_id=agent_id,
-            duration_secs=duration,
-            outcome="COMPLETED",
-            caller_number=caller_number,
-            transcript=transcript,
-        ))
+        asyncio.create_task(_do_log_call())
 
     await session.start(agent=agent, room=ctx.room)
     log.info("session_ready")
@@ -319,6 +363,12 @@ async def entrypoint(ctx: JobContext) -> None:
     # Deliver the opening greeting. generate_reply with instructions tells the
     # LLM exactly what to say first rather than waiting for the caller to speak.
     await session.generate_reply(instructions=greeting)
+
+    # Wait for the session to finish (framework keeps this alive until close)
+    # Then ensure call logging completes before the entrypoint returns.
+    # The await below is a safety net — if the session closes and the event loop
+    # is still running, we wait for logging to finish.
+    await log_done.wait()
 
 
 if __name__ == "__main__":

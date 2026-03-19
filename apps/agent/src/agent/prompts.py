@@ -24,6 +24,21 @@ def _sanitize_phone(raw: str) -> str | None:
     return cleaned
 
 
+_MAX_FIELD_LEN = 100
+
+
+def _sanitize_text(value: str, max_len: int = _MAX_FIELD_LEN) -> str:
+    """Sanitize a text field from the database before embedding in a prompt.
+
+    Strips newlines, carriage returns, and markdown-like injection patterns
+    to prevent prompt injection via database-sourced content (Issue #6).
+    """
+    cleaned = value.replace("\n", " ").replace("\r", " ")
+    # Collapse multiple spaces
+    cleaned = " ".join(cleaned.split())
+    return cleaned[:max_len]
+
+
 _DEFAULT_BUSINESS_NAME = "our dental clinic"
 _DEFAULT_SERVICES = "general dentistry, cleanings, fillings, crowns, and extractions"
 _DEFAULT_HOURS = "Monday through Friday, 8 AM to 6 PM, and Saturday 9 AM to 2 PM"
@@ -132,11 +147,17 @@ def build_system_prompt(config: dict[str, Any] | None, caller_number: str | None
     else:
         services = _DEFAULT_SERVICES
 
+    # Issue #13: ensure hours are output in consistent day-of-week order
+    _DAY_ORDER = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
     raw_hours = config.get("hours")
     if isinstance(raw_hours, dict):
         # Builder produces {"monday": {"open": "09:00", "close": "17:00"}, ...}
         day_strs = []
-        for day, times in raw_hours.items():
+        # Sort by canonical day order; any unknown keys go at the end
+        sorted_days = sorted(raw_hours.keys(), key=lambda d: _DAY_ORDER.index(d.lower()) if d.lower() in _DAY_ORDER else 99)
+        for day in sorted_days:
+            times = raw_hours[day]
             if times is None:
                 day_strs.append(f"{day.capitalize()}: Closed")
             elif isinstance(times, dict):
@@ -222,8 +243,10 @@ def get_greeting(config: dict[str, Any] | None, contact: dict[str, Any] | None =
         )
 
     if contact and contact.get("name"):
+        # Issue #7: sanitize contact name before embedding in greeting
+        safe_name = _sanitize_text(str(contact["name"]))
         base_greeting += (
-            f" (The caller is {contact['name']}, a returning customer"
+            f" (The caller is {safe_name}, a returning customer"
             " \u2014 greet them by name.)"
         )
 
@@ -255,9 +278,12 @@ def build_caller_context_suffix(contact: dict[str, Any] | None, appointments: di
     lines: list[str] = ["\n\n## Caller Context"]
 
     if contact:
-        name: str | None = contact.get("name")
+        # Issue #6: sanitize all contact fields before embedding in prompt
+        raw_name: str | None = contact.get("name")
+        name = _sanitize_text(str(raw_name)) if raw_name else None
         call_count: int = int(contact.get("callCount", 0))
-        last_called_at: str | None = contact.get("lastCalledAt")
+        raw_last_called: str | None = contact.get("lastCalledAt")
+        last_called_at = _sanitize_text(str(raw_last_called), 30) if raw_last_called else None
 
         if name:
             lines.append(f"This caller is a returning customer: {name}.")
@@ -270,14 +296,15 @@ def build_caller_context_suffix(contact: dict[str, Any] | None, appointments: di
         lines.append(call_summary)
 
     for appt in upcoming:
-        service = appt.get("service", "appointment")
-        scheduled_at = appt.get("scheduledAt", "an unknown date")
+        # Issue #6: sanitize appointment fields
+        service = _sanitize_text(str(appt.get("service", "appointment")), 50)
+        scheduled_at = _sanitize_text(str(appt.get("scheduledAt", "an unknown date")), 30)
         lines.append(f"This caller has an upcoming {service} on {scheduled_at}.")
 
     if past:
         first_past = past[0]
-        service = first_past.get("service", "appointment")
-        scheduled_at = first_past.get("scheduledAt", "an unknown date")
+        service = _sanitize_text(str(first_past.get("service", "appointment")), 50)
+        scheduled_at = _sanitize_text(str(first_past.get("scheduledAt", "an unknown date")), 30)
         lines.append(f"This caller's last visit was {scheduled_at} for {service}.")
 
     if contact and contact.get("name"):

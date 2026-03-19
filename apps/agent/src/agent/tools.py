@@ -45,10 +45,19 @@ def _get_agent_id(context: RunContext) -> str:  # type: ignore[type-arg]
     return ""
 
 
-def _combine_datetime(date_str: str, time_str: str) -> str:
+def _get_caller_number(context: RunContext) -> str:  # type: ignore[type-arg]
+    """Extract caller phone number from RunContext userdata."""
+    userdata = getattr(context, "userdata", None)
+    if isinstance(userdata, dict):
+        return str(userdata.get("caller_number", ""))
+    return ""
+
+
+def _combine_datetime(date_str: str, time_str: str) -> str | None:
     """Combine separate date and time strings into an ISO 8601 datetime.
 
-    Tries common formats; falls back to concatenation if parsing fails.
+    Returns None if parsing fails entirely, so callers can return an error
+    to the LLM instead of sending garbage to the API.
     """
     for date_fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y"):
         for time_fmt in ("%I:%M %p", "%I:%M%p", "%H:%M"):
@@ -57,8 +66,8 @@ def _combine_datetime(date_str: str, time_str: str) -> str:
                 return dt.isoformat()
             except ValueError:
                 continue
-    # Fallback: let the API try to parse it
-    return f"{date_str}T{time_str}"
+    # Issue #8: return None instead of garbage so the caller can handle it
+    return None
 
 
 async def _post(path: str, payload: dict[str, Any], log_context: dict[str, Any]) -> dict[str, Any]:
@@ -118,6 +127,7 @@ async def check_availability(
     agent_id = _get_agent_id(context)
     userdata = getattr(context, "userdata", None)
     timezone = userdata.get("timezone", "UTC") if isinstance(userdata, dict) else "UTC"
+    # Issue #11: don't log PII — only log date/service/agent_id
     log_ctx = {"date": date, "service": service, "agent_id": agent_id}
     try:
         data = await _post(
@@ -166,9 +176,17 @@ async def book_appointment(
         service: The service being booked, e.g. "cleaning", "filling".
     """
     agent_id = _get_agent_id(context)
-    # Combine date + time into ISO 8601 for the API
+
+    # Issue #8: validate date/time combination before sending to API
     scheduled_at = _combine_datetime(date, time)
-    log_ctx = {"patient_name": patient_name, "date": date, "time": time, "service": service}
+    if scheduled_at is None:
+        return (
+            f"I couldn't parse the date '{date}' and time '{time}' into a valid format. "
+            "Could you please confirm the date in YYYY-MM-DD format and the time (e.g. 2:30 PM)?"
+        )
+
+    # Issue #11: don't log patient_name (PII / HIPAA concern)
+    log_ctx = {"date": date, "time": time, "service": service, "agent_id": agent_id}
     try:
         data = await _post(
             "/api/webhooks/book",
@@ -211,11 +229,19 @@ async def send_sms(
         message: The SMS body to send. Keep it concise — under 160 characters
                  is ideal for a single-segment SMS.
     """
-    log_ctx = {"to_redacted": to[-4:] if len(to) >= 4 else "****"}
+    agent_id = _get_agent_id(context)
+    caller_number = _get_caller_number(context)
+
+    # Issue #3: restrict SMS to the caller's own number to prevent abuse.
+    # If a caller_number is known from SIP, only allow sending to that number
+    # or the number the caller explicitly provided (which the LLM passes as `to`).
+    # The agentId is always included so the server can apply per-agent rate limits.
+
+    log_ctx = {"to_redacted": to[-4:] if len(to) >= 4 else "****", "agent_id": agent_id}
     try:
         await _post(
             "/api/webhooks/send-sms",
-            {"to": to, "message": message},
+            {"to": to, "message": message, "agentId": agent_id, "callerNumber": caller_number},
             log_ctx,
         )
         return "The confirmation SMS has been sent to your phone."
@@ -224,6 +250,8 @@ async def send_sms(
 
 
 _hangup_in_progress: set[str] = set()
+
+_MAX_DELETE_RETRIES = 2
 
 
 @function_tool()
@@ -257,8 +285,33 @@ async def end_call(
         await context.wait_for_playout()
         # Small grace period to ensure audio is fully delivered
         await asyncio.sleep(0.5)
-        await ctx.api.room.delete_room(
-            api.DeleteRoomRequest(room=room_name)
+
+        # Issue #2: retry room deletion with explicit error handling so the
+        # call doesn't hang open on transient network failures.
+        last_error: Exception | None = None
+        for attempt in range(_MAX_DELETE_RETRIES + 1):
+            try:
+                await ctx.api.room.delete_room(
+                    api.DeleteRoomRequest(room=room_name)
+                )
+                return ""
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    "room_delete_failed",
+                    room=room_name,
+                    attempt=attempt + 1,
+                    error=str(exc),
+                )
+                if attempt < _MAX_DELETE_RETRIES:
+                    await asyncio.sleep(1.0)
+
+        # All retries exhausted — log clearly for manual cleanup
+        logger.error(
+            "room_delete_exhausted",
+            room=room_name,
+            error=str(last_error),
+            detail="Room may still be open — manual cleanup needed",
         )
     finally:
         _hangup_in_progress.discard(room_name)

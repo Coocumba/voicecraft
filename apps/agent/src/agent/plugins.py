@@ -52,6 +52,7 @@ def create_tts(voice_settings: dict[str, Any] | None = None):
         or os.environ.get("TTS_PROVIDER", "openai")
     ).lower()
 
+    # Issue #8: use explicit if/elif/else so "google" config doesn't silently use OpenAI
     if provider == "elevenlabs":
         voice_id = settings.get("voiceId") or settings.get("voice_id") or "21m00Tcm4TlvDq8ikWAM"
         api_key = os.environ.get("ELEVEN_API_KEY") or os.environ.get("ELEVENLABS_API_KEY")
@@ -63,18 +64,24 @@ def create_tts(voice_settings: dict[str, Any] | None = None):
                 return elevenlabs.TTS(voice_id=voice_id)
             except Exception as exc:
                 logger.warning("elevenlabs_init_failed", error=str(exc))
+        # Fall through to OpenAI if ElevenLabs key missing or init failed
 
-    if provider == "openai" or provider != "elevenlabs":
-        try:
-            from livekit.plugins import openai
-            voice = settings.get("voice") or os.environ.get("TTS_VOICE", "alloy")
-            model = settings.get("model") or os.environ.get("TTS_MODEL", "gpt-4o-mini-tts")
-            logger.info("tts_provider_selected", provider="openai", voice=voice, model=model)
-            return openai.TTS(voice=voice, model=model)
-        except Exception as exc:
-            logger.warning("openai_tts_init_failed", error=str(exc))
+    if provider == "google":
+        from livekit.plugins import google
+        logger.info("tts_provider_selected", provider="google")
+        return google.TTS(gender="female", voice_name="en-US-Wavenet-F")
 
-    # Final fallback: Google Cloud TTS
-    from livekit.plugins import google
-    logger.info("tts_provider_selected", provider="google")
-    return google.TTS(gender="female", voice_name="en-US-Wavenet-F")
+    # Default: OpenAI TTS (covers provider == "openai" and fallback from failed ElevenLabs)
+    try:
+        from livekit.plugins import openai
+        voice = settings.get("voice") or os.environ.get("TTS_VOICE", "alloy")
+        model = settings.get("model") or os.environ.get("TTS_MODEL", "gpt-4o-mini-tts")
+        logger.info("tts_provider_selected", provider="openai", voice=voice, model=model)
+        return openai.TTS(voice=voice, model=model)
+    except Exception as exc:
+        logger.warning("openai_tts_init_failed", error=str(exc))
+
+    # Last resort fallback: Google Cloud TTS
+    from livekit.plugins import google as google_tts
+    logger.info("tts_provider_selected", provider="google", fallback=True)
+    return google_tts.TTS(gender="female", voice_name="en-US-Wavenet-F")
