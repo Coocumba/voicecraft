@@ -251,18 +251,23 @@ export function ChooseNumberClient({
             placeholder="City"
             className="w-40 px-3 py-2 rounded-lg border border-border bg-white text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
           />
-          <select
-            value={country}
-            onChange={(e) => {
-              setCountry(e.target.value)
-              setCity('')
-            }}
-            className="w-44 px-3 py-2 rounded-lg border border-border bg-white text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-          >
-            {COUNTRIES.map((c) => (
-              <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              value={country}
+              onChange={(e) => {
+                setCountry(e.target.value)
+                setCity('')
+              }}
+              className="w-44 appearance-none px-3 py-2 pr-8 rounded-lg border border-border bg-white text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+            >
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
+              ))}
+            </select>
+            <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
           <input
             type="text"
             value={pattern}
