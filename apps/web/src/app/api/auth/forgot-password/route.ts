@@ -15,6 +15,19 @@ export async function POST(req: Request) {
 
   // Only send reset for accounts that have a password (not OAuth-only)
   if (user && user.passwordHash) {
+    // Rate limit: check if a reset was recently requested
+    const recentToken = await prisma.passwordResetToken.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+    })
+    if (recentToken) {
+      const secondsAgo = (Date.now() - recentToken.createdAt.getTime()) / 1000
+      if (secondsAgo < 60) {
+        // Return success silently — don't reveal rate limiting to prevent enumeration
+        return NextResponse.json({ success: true })
+      }
+    }
+
     const { rawToken, tokenHash } = generateToken()
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
 
@@ -26,7 +39,8 @@ export async function POST(req: Request) {
     try {
       await sendPasswordResetEmail(user.email, rawToken)
     } catch {
-      // Fail silently — don't leak whether the email exists
+      // Roll back token so the user isn't blocked by a failed send
+      await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } })
     }
   }
 

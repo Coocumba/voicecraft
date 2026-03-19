@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@voicecraft/db"
 import { hashToken } from "@/lib/tokens"
-import { hashSync } from "bcryptjs"
+import { hash } from "bcryptjs"
 
 export async function POST(req: Request) {
   const body = (await req.json()) as { token?: string; password?: string }
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid or expired reset link" }, { status: 400 })
   }
 
-  const passwordHash = hashSync(body.password, 10)
+  const passwordHash = await hash(body.password, 10)
 
   try {
     await prisma.$transaction(async (tx) => {

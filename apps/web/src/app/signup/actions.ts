@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation"
 import { prisma } from "@voicecraft/db"
-import { hashSync } from "bcryptjs"
+import { hash } from "bcryptjs"
 import { generateToken } from "@/lib/tokens"
 import { sendVerificationEmail } from "@/lib/email"
 
@@ -31,7 +31,7 @@ export async function signup(
     return { error: "An account with this email already exists." }
   }
 
-  const passwordHash = hashSync(password, 10)
+  const passwordHash = await hash(password, 10)
   const user = await prisma.user.create({
     data: {
       email,

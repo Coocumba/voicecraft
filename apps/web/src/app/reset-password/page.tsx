@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { prisma } from "@voicecraft/db"
 import { hashToken } from "@/lib/tokens"
 import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm"
@@ -38,11 +39,12 @@ export default async function ResetPasswordPage({ searchParams }: Props) {
         <p className="text-muted text-sm text-center mb-8">
           {isValid ? "Choose a new password" : "Link problem"}
         </p>
-        <ResetPasswordForm
-          token={token ?? ""}
-          isValid={isValid}
-          errorMessage={errorMessage}
-        />
+        <Suspense fallback={null}>
+          <ResetPasswordForm
+            isValid={isValid}
+            errorMessage={errorMessage}
+          />
+        </Suspense>
         {!isValid && (
           <p className="text-center text-sm text-muted mt-4">
             <a href="/login" className="text-accent hover:underline">Back to sign in</a>

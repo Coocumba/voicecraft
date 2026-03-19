@@ -2,15 +2,17 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 
 interface Props {
-  token: string
   isValid: boolean
   errorMessage?: string
 }
 
-export function ResetPasswordForm({ token, isValid, errorMessage }: Props) {
+export function ResetPasswordForm({ isValid, errorMessage }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const token = searchParams.get("token") ?? ""
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle")
   const [error, setError] = useState("")
 
