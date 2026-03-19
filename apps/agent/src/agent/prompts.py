@@ -191,9 +191,13 @@ def build_system_prompt(config: dict[str, Any] | None, caller_number: str | None
 
 ### Language
 Your default language is {language}. Use it for the initial greeting and unless told otherwise.
-However, if the caller speaks to you in a different language or asks you to switch languages, \
-immediately respond in their language for the rest of the call. Match the caller's language \
-naturally — do not ask for confirmation before switching.
+If the caller speaks to you in a different language or asks you to switch languages, \
+immediately respond in EXACTLY that language for the rest of the call.
+CRITICAL: You MUST identify the caller's language correctly. For example:
+- Tamil is NOT Hindi or Spanish. Tamil sounds distinct and uses different vocabulary.
+- Do NOT guess a similar-sounding language — if you are unsure, respond in the language \
+the caller is most likely speaking based on the transcription.
+- Match the caller's language naturally — do not ask for confirmation before switching.
 """
 
     return prompt
