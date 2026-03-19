@@ -3,7 +3,7 @@ import Link from "next/link"
 interface PublicHeaderProps {
   ctaHref: string
   signInLabel: string
-  activePage?: "features" | "use-cases"
+  activePage?: "features" | "use-cases" | "pricing"
 }
 
 export function PublicHeader({ ctaHref, signInLabel, activePage }: PublicHeaderProps) {
@@ -34,6 +34,16 @@ export function PublicHeader({ ctaHref, signInLabel, activePage }: PublicHeaderP
             }`}
           >
             Use Cases
+          </Link>
+          <Link
+            href="/pricing"
+            className={`hidden sm:inline-flex text-sm px-2 sm:px-3 py-1.5 rounded-lg transition-colors ${
+              activePage === "pricing"
+                ? "text-ink font-medium"
+                : "text-muted hover:text-ink"
+            }`}
+          >
+            Pricing
           </Link>
           <Link
             href={ctaHref}

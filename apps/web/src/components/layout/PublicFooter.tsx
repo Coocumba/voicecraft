@@ -18,6 +18,10 @@ export function PublicFooter() {
             Use Cases
           </Link>
           <span className="text-border hidden sm:inline">&middot;</span>
+          <Link href="/pricing" className="hover:text-ink transition-colors">
+            Pricing
+          </Link>
+          <span className="text-border hidden sm:inline">&middot;</span>
           <Link href="/login" className="hover:text-ink transition-colors">
             Sign in
           </Link>
