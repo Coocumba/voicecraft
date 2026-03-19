@@ -53,26 +53,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const email = user.email
         if (!email) return false
 
-        const existing = await prisma.user.findUnique({ where: { email } })
-        if (existing) {
-          if (!existing.emailVerified) {
-            await prisma.user.update({
-              where: { email },
-              data: { emailVerified: new Date() },
-            })
-          }
-          user.id = existing.id
-        } else {
-          const created = await prisma.user.create({
-            data: {
-              email,
-              name: user.name ?? null,
-              emailVerified: new Date(),
-              passwordHash: null,
-            },
-          })
-          user.id = created.id
-        }
+        const upserted = await prisma.user.upsert({
+          where: { email },
+          update: {
+            emailVerified: new Date(), // always ensure verified for Google users
+          },
+          create: {
+            email,
+            name: user.name ?? null,
+            emailVerified: new Date(),
+            passwordHash: null,
+          },
+        })
+
+        user.id = upserted.id
+        ;(user as { emailVerified?: Date | null }).emailVerified = upserted.emailVerified
       }
       return true
     },
@@ -80,7 +75,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id
         token.name = user.name
-        token.emailVerified = (user as { emailVerified?: Date | null }).emailVerified ?? new Date()
+        token.emailVerified = (user as { emailVerified?: Date | null }).emailVerified ?? null
       }
       if (trigger === "update" && typeof session?.name === "string") {
         token.name = session.name
