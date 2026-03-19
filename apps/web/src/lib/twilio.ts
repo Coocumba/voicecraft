@@ -153,17 +153,23 @@ export async function purchasePhoneNumber(
   const searchParams = new URLSearchParams({ Limit: "1" })
   if (areaCode) searchParams.set("AreaCode", areaCode)
 
-  const searchUrl = `${twilioBaseUrl()}/AvailablePhoneNumbers/${country}/Local.json?${searchParams.toString()}`
-  const searchRes = await fetch(searchUrl, {
-    headers: { Authorization: twilioBasicAuth() },
-  })
+  // Try Local first, then Mobile, then TollFree — not all countries support all types
+  let searchData: TwilioAvailableNumbersResponse | null = null
+  for (const numberType of ["Local", "Mobile", "TollFree"]) {
+    const searchUrl = `${twilioBaseUrl()}/AvailablePhoneNumbers/${country}/${numberType}.json?${searchParams.toString()}`
+    const searchRes = await fetch(searchUrl, {
+      headers: { Authorization: twilioBasicAuth() },
+    })
 
-  if (!searchRes.ok) {
-    const text = await searchRes.text()
-    throw new Error(`Twilio number search failed (${searchRes.status}): ${text}`)
+    if (searchRes.ok) {
+      searchData = (await searchRes.json()) as TwilioAvailableNumbersResponse
+      if ((searchData.available_phone_numbers ?? []).length > 0) break
+    }
   }
 
-  const searchData = (await searchRes.json()) as TwilioAvailableNumbersResponse
+  if (!searchData) {
+    throw new Error(`No phone numbers available for country ${country}`)
+  }
   const available = searchData.available_phone_numbers ?? []
 
   if (available.length === 0 || !available[0]) {
@@ -230,17 +236,23 @@ export async function searchAvailableNumbers(
   if (params.locality) searchParams.set("InLocality", params.locality)
   if (params.region) searchParams.set("InRegion", params.region)
 
-  const url = `${twilioBaseUrl()}/AvailablePhoneNumbers/${country}/Local.json?${searchParams.toString()}`
-  const res = await fetch(url, {
-    headers: { Authorization: twilioBasicAuth() },
-  })
+  // Try Local first, then Mobile, then TollFree — not all countries support all types
+  let data: TwilioAvailableNumbersResponse | null = null
+  for (const numberType of ["Local", "Mobile", "TollFree"]) {
+    const url = `${twilioBaseUrl()}/AvailablePhoneNumbers/${country}/${numberType}.json?${searchParams.toString()}`
+    const res = await fetch(url, {
+      headers: { Authorization: twilioBasicAuth() },
+    })
 
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`Twilio number search failed (${res.status}): ${text}`)
+    if (res.ok) {
+      data = (await res.json()) as TwilioAvailableNumbersResponse
+      if ((data.available_phone_numbers ?? []).length > 0) break
+    }
   }
 
-  const data = (await res.json()) as TwilioAvailableNumbersResponse
+  if (!data) {
+    throw new Error(`No phone numbers available for country ${country}`)
+  }
   const available = data.available_phone_numbers ?? []
 
   return available.map((n) => ({
