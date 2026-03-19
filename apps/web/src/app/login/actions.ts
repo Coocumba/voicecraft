@@ -2,6 +2,7 @@
 
 import { signIn } from "@/auth"
 import { AuthError } from "next-auth"
+import { EmailNotVerifiedError } from "@/auth"
 
 export async function authenticate(
   prevState: { error: string } | undefined,
@@ -14,6 +15,9 @@ export async function authenticate(
       redirectTo: "/dashboard",
     })
   } catch (error) {
+    if (error instanceof EmailNotVerifiedError) {
+      return { error: "EMAIL_NOT_VERIFIED" }
+    }
     if (error instanceof AuthError) {
       switch (error.type) {
         case "CredentialsSignin":
