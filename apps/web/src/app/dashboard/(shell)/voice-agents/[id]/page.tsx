@@ -135,6 +135,12 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
 
         <div id="agent-header-actions" className="flex items-center gap-2 flex-shrink-0">
           <Link
+            href={`/dashboard/voice-agents/${agent.id}/edit`}
+            className="bg-white text-ink px-4 py-2 rounded-lg text-sm border border-border hover:bg-cream font-medium transition-colors"
+          >
+            Edit
+          </Link>
+          <Link
             href={`/dashboard/voice-agents/${agent.id}/test`}
             className="bg-white text-ink px-4 py-2 rounded-lg text-sm border border-border hover:bg-cream font-medium transition-colors"
           >
