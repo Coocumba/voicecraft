@@ -68,7 +68,7 @@ export function InlineSummaryCard({ config, onSave, saving, editMode }: InlineSu
           {config.greeting && (
             <>
               <span className="text-xs text-muted py-1.5">Greeting</span>
-              <span className="text-xs text-ink py-1.5 border-b border-border/30 italic line-clamp-1">&ldquo;{config.greeting}&rdquo;</span>
+              <span className="text-xs text-ink py-1.5 border-b border-border/30 italic">&ldquo;{config.greeting}&rdquo;</span>
             </>
           )}
           {serviceNames && (
