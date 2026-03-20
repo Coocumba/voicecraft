@@ -1,5 +1,6 @@
 import { auth } from '@/auth'
 import { TopBar } from '@/components/layout/TopBar'
+import { SubscriptionBanner } from '@/components/billing/SubscriptionBanner'
 
 export default async function ShellLayout({
   children,
@@ -10,6 +11,7 @@ export default async function ShellLayout({
 
   return (
     <div className="flex flex-col min-h-screen">
+      <SubscriptionBanner />
       <TopBar
         userName={session?.user?.name}
         userEmail={session?.user?.email}

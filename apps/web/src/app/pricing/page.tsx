@@ -24,7 +24,6 @@ export default function PricingPage() {
       calls: "~150 calls",
       overage: "$0.05",
       agents: "1",
-      extraAgents: "+$10/mo each",
       highlight: false,
     },
     {
@@ -36,7 +35,6 @@ export default function PricingPage() {
       calls: "~450 calls",
       overage: "$0.04",
       agents: "3",
-      extraAgents: "+$10/mo each",
       highlight: true,
     },
     {
@@ -48,7 +46,6 @@ export default function PricingPage() {
       calls: "~1,500 calls",
       overage: "$0.03",
       agents: "10",
-      extraAgents: "+$10/mo each",
       highlight: false,
     },
   ];
@@ -102,6 +99,9 @@ export default function PricingPage() {
         <p className="text-base sm:text-lg text-muted max-w-xl mx-auto leading-relaxed">
           Every plan includes all features. Pick the one that matches your call
           volume.
+        </p>
+        <p className="text-xs text-muted mt-2">
+          Prices shown in USD. Local currency applied at checkout.
         </p>
       </section>
 
@@ -256,9 +256,7 @@ export default function PricingPage() {
                       d="M5 13l4 4L19 7"
                     />
                   </svg>
-                  <span className="text-ink">
-                    Extra agents {plan.extraAgents}
-                  </span>
+                  <span className="text-ink">Extra agents: contact us</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <svg

@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { CalendarConnectButtons } from '@/components/integrations/CalendarConnectButtons'
+import { BillingSection } from '@/components/billing/BillingSection'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -268,6 +269,17 @@ export default function SettingsPage() {
             </p>
           </div>
           <CalendarSection />
+        </div>
+
+        {/* Plan & Billing */}
+        <div className="bg-white rounded-xl border border-border p-6">
+          <div className="mb-5">
+            <h2 className="font-serif text-base text-ink">Plan & Billing</h2>
+            <p className="text-sm text-muted mt-1">
+              Manage your subscription and view usage.
+            </p>
+          </div>
+          <BillingSection />
         </div>
       </div>
     </div>
