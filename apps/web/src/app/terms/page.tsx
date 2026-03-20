@@ -2,6 +2,7 @@ import Link from "next/link"
 import { auth } from "@/auth"
 import { PublicHeader } from "@/components/layout/PublicHeader"
 import { PublicFooter } from "@/components/layout/PublicFooter"
+import { LegalPageLayout } from "@/components/layout/LegalSidebar"
 
 export const metadata = {
   title: "Terms of Service",
@@ -46,27 +47,8 @@ export default async function TermsPage() {
         <p className="text-sm text-muted">Last updated March 20, 2026</p>
       </section>
 
-      {/* Table of Contents */}
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 mb-12">
-        <div className="bg-white rounded-2xl border border-border p-6 sm:p-8">
-          <h2 className="font-serif text-lg text-ink mb-4">Table of Contents</h2>
-          <ol className="space-y-2">
-            {sections.map((s, i) => (
-              <li key={s.id}>
-                <a
-                  href={`#${s.id}`}
-                  className="text-sm text-accent hover:underline"
-                >
-                  {i + 1}. {s.title}
-                </a>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      {/* Content */}
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-16">
+      {/* Sidebar + Content layout */}
+      <LegalPageLayout sections={sections}>
 
         {/* 1. Introduction & Acceptance */}
         <section id="acceptance" className="scroll-mt-20 py-8 border-b border-border">
@@ -317,7 +299,7 @@ export default async function TermsPage() {
           </div>
         </section>
 
-      </div>
+      </LegalPageLayout>
 
       <PublicFooter />
     </div>
