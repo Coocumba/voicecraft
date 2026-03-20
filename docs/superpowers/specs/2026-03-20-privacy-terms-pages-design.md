@@ -11,6 +11,9 @@ Add two new public pages to VoiceCraft: `/privacy` (Privacy Policy) and `/terms`
 - **Page style:** Single long-scroll prose page (Approach A) — industry standard, matches existing patterns
 - **Technical detail level:** Name third-party companies but skip engineering specs (no model names, no algorithm details)
 - **No CTA banner** at bottom — these are legal pages, not marketing
+- **Component type:** Server Components with `export const metadata` for SEO (no interactivity needed)
+- **Session detection:** Use `auth()` server-side to determine ctaHref/signInLabel (same pattern as use-cases page)
+- **Legal review:** Content is a working draft — should be reviewed by legal counsel before production deployment
 
 ## Visual Design
 
@@ -22,7 +25,7 @@ Both pages share identical layout:
 PublicHeader (sticky, no activePage — legal pages aren't nav items)
   |
 Hero (max-w-3xl mx-auto, centered)
-  - Badge: "Legal" (accent pill, same style as pricing/use-cases badges)
+  - No badge (legal pages don't need a marketing hook — departure from pricing/use-cases)
   - H1: "Privacy Policy" or "Terms of Service" (font-serif text-4xl sm:text-5xl)
   - Last updated: "Last updated March 20, 2026" (text-muted text-sm)
   |
@@ -58,6 +61,24 @@ PublicFooter (with Privacy + Terms links added)
 - TOC card: `mb-12`
 - Sections: `py-8 border-b border-border` (last section has no border)
 - Final section to footer: `pb-16`
+
+### Tables (Provider Table)
+
+No table precedent exists in current pages. Use:
+- Container: `w-full text-sm overflow-x-auto`
+- Table: `w-full`
+- Header row: `bg-cream text-left font-semibold text-ink`
+- Header cells: `px-4 py-3 border-b border-border`
+- Body cells: `px-4 py-3 border-b border-border text-ink/80`
+- Rounded wrapper: `rounded-xl border border-border overflow-hidden`
+
+### SEO Metadata
+
+Both pages export `metadata` for Next.js:
+- Privacy: `{ title: "Privacy Policy", description: "How VoiceCraft collects, uses, and protects your information." }`
+- Terms: `{ title: "Terms of Service", description: "Terms and conditions for using the VoiceCraft platform." }`
+
+Title template from root layout will produce: "Privacy Policy · VoiceCraft"
 
 ### Responsive
 
@@ -108,11 +129,12 @@ Same `text-muted hover:text-ink transition-colors` styling with `·` separators.
 - We do not use your data to train AI models
 - AI-generated responses and configurations may not always be accurate — you are responsible for reviewing your agent's setup
 
-**5. Voice Calls**
+**5. Voice Calls and Call Recording**
 - Inbound calls to your VoiceCraft number are handled by an AI voice agent
 - Call audio is processed in real-time for speech recognition and response generation
 - Call transcripts and summaries may be stored to provide call history and analytics
 - Callers interact with an AI assistant, not a human
+- You are responsible for complying with applicable call recording and consent laws in your jurisdiction (some US states require all-party consent for call recording)
 
 **6. Third-Party Service Providers**
 We share data with the following providers to operate the service:
@@ -121,6 +143,7 @@ We share data with the following providers to operate the service:
 |----------|-------------------|---------|
 | Anthropic | Business descriptions, builder conversations | AI agent configuration |
 | Google | Call conversations, calendar events | Voice AI processing, calendar sync |
+| Microsoft | Calendar events | Calendar sync (Outlook) |
 | Deepgram | Call audio streams | Speech recognition |
 | ElevenLabs / OpenAI | Text responses | Voice synthesis |
 | Twilio / Meta | Phone numbers, messages, appointment details | Phone calls, WhatsApp messaging |
@@ -155,29 +178,37 @@ Each provider processes data under their own privacy policies and terms.
 - The service handles operational business data such as appointment scheduling and call routing — it is not a medical or clinical tool
 - If you operate in a HIPAA-regulated environment, you are responsible for ensuring your use of VoiceCraft complies with applicable regulations
 
-**11. Your Rights**
+**11. California Residents (CCPA/CPRA)**
+- If you are a California resident, you have additional rights under the California Consumer Privacy Act
+- *Right to know:* you may request the categories and specific pieces of personal information we have collected
+- *Right to delete:* you may request deletion of your personal information
+- *Right to opt-out:* we do not sell or share your personal information for cross-context behavioral advertising
+- *Non-discrimination:* we will not discriminate against you for exercising your privacy rights
+- To exercise these rights, contact us at the email below
+
+**12. Your Rights**
 - *Access:* request a copy of the personal data we hold about you
 - *Correction:* request correction of inaccurate data
 - *Deletion:* request deletion of your data and account
 - *Export:* request a portable copy of your data
 - Contact us at the email below to exercise these rights — we respond within 30 days
 
-**12. Children's Privacy**
+**13. Children's Privacy**
 - VoiceCraft is a business tool and is not directed at individuals under 18
 - We do not knowingly collect data from children
 
-**13. International Users**
+**14. International Users**
 - VoiceCraft is operated from the United States
 - Your data is processed and stored in the United States
 - By using the service, you consent to the transfer and processing of your data in the United States
 
-**14. Changes to This Policy**
+**15. Changes to This Policy**
 - We may update this policy from time to time
 - Material changes will be communicated via email to your registered address
 - The "Last updated" date at the top will reflect the most recent revision
 - Continued use of the service after changes constitutes acceptance
 
-**15. Contact Us**
+**16. Contact Us**
 - For privacy questions or to exercise your rights: privacy@voicecraft.dev
 
 ## Terms of Service Content
@@ -262,24 +293,31 @@ You agree not to:
 - This includes but is not limited to lost revenue, missed appointments, or damages arising from AI agent behavior
 - These limitations apply to the maximum extent permitted by law
 
-**13. Termination**
+**13. Indemnification**
+- You agree to indemnify and hold VoiceCraft harmless from claims, damages, or expenses arising from: your use of the service, your agent's interactions with callers, your violation of these terms, or your violation of any applicable law
+- This includes claims arising from the content or behavior of AI agents you configure and deploy
+
+**14. Termination**
 - You may cancel your account at any time through your dashboard or by contacting support
 - We may terminate or suspend your account for violation of these terms, with notice where practicable
 - Upon termination: access is revoked immediately, your data is retained for 30 days for retrieval, then permanently deleted
 - Sections that by nature should survive termination (liability, IP, disclaimers) will survive
 
-**14. Governing Law**
+**15. Governing Law**
 - These terms are governed by the laws of the State of Delaware, United States
 - Disputes will be resolved in the courts of Delaware
 - You agree to attempt good-faith resolution before pursuing legal action
 
-**15. Changes to These Terms**
+**16. Severability**
+- If any provision of these terms is found to be unenforceable, the remaining provisions remain in full effect
+
+**17. Changes to These Terms**
 - We may update these terms from time to time
 - Material changes will be communicated via email at least 30 days before taking effect
 - The "Last updated" date at the top reflects the most recent revision
 - Continued use after changes take effect constitutes acceptance
 
-**16. Contact Us**
+**18. Contact Us**
 - For questions about these terms: legal@voicecraft.dev
 
 ## Files to Create / Modify
