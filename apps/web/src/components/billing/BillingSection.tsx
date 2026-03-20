@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { UsageBar } from '@/components/billing/UsageBar'
 import { TRIAL_MINUTES } from '@/lib/billing-constants'
@@ -99,9 +100,9 @@ export function BillingSection() {
     return (
       <p className="text-sm text-muted py-4">
         No subscription found.{' '}
-        <a href="/choose-plan" className="text-accent underline underline-offset-2">
+        <Link href="/choose-plan" className="text-accent underline underline-offset-2">
           Choose a plan
-        </a>
+        </Link>
       </p>
     )
   }
