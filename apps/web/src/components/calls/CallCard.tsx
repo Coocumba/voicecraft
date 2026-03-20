@@ -109,7 +109,7 @@ export function CallCard({ call }: CallCardProps) {
     }
 
     setExpanded(true)
-  }, [expanded, details, fetchError, call.id])
+  }, [expanded, details, call.id])
 
   const hasVisibleDetails = details?.transcript || details?.summary
 

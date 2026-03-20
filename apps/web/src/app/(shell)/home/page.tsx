@@ -1,4 +1,4 @@
-import { auth } from '@/auth'
+import { getSession } from '@/auth'
 import { redirect } from 'next/navigation'
 import { prisma, AgentStatus } from '@voicecraft/db'
 import { ServiceCard } from '@/components/ui/ServiceCard'
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Home' }
 
 export default async function HomePage() {
-  const session = await auth()
+  const session = await getSession()
   if (!session?.user?.id) redirect('/login')
 
   const [agentCount, activeAgentCount, weekCallCount] = await Promise.all([

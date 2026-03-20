@@ -11,8 +11,9 @@ export function TimezoneSync() {
   useEffect(() => {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
     // Only set if changed (avoids writing on every render)
-    if (!document.cookie.includes(`timezone=${tz}`)) {
-      document.cookie = `timezone=${tz};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`
+    const encoded = encodeURIComponent(tz)
+    if (!document.cookie.includes(`timezone=${encoded}`)) {
+      document.cookie = `timezone=${encoded};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`
     }
   }, [])
 

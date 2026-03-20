@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { auth } from '@/auth'
+import { getSession } from '@/auth'
 import { prisma, AgentStatus, CallOutcome, PhoneNumberStatus, IntegrationProvider } from '@voicecraft/db'
 import { formatDate, formatDuration } from '@/lib/date-utils'
 import { LocalTime } from '@/components/ui/LocalTime'
@@ -61,7 +61,7 @@ function outcomeLabel(outcome: CallOutcome) {
 }
 
 export default async function VoiceAgentDetailPage({ params, searchParams }: PageProps) {
-  const session = await auth()
+  const session = await getSession()
   if (!session?.user?.id) redirect('/login')
 
   const { id } = await params

@@ -82,7 +82,8 @@ export function isValidTimezone(tz: string): boolean {
 export async function getUserTimezone(): Promise<string> {
   const { cookies } = await import('next/headers')
   const cookieStore = await cookies()
-  const tz = cookieStore.get('timezone')?.value
+  const raw = cookieStore.get('timezone')?.value
+  const tz = raw ? decodeURIComponent(raw) : undefined
   if (tz && isValidTimezone(tz)) return tz
   return 'UTC'
 }

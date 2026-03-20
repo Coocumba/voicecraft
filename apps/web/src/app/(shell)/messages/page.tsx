@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation'
-import { auth } from '@/auth'
+import { getSession } from '@/auth'
 import { prisma, MessagingStatus, MessageChannel } from '@voicecraft/db'
 import { MessagesClient } from '@/components/messages/MessagesClient'
 
 export const metadata = { title: 'Messages' }
 
 export default async function MessagesPage() {
-  const session = await auth()
+  const session = await getSession()
   if (!session?.user?.id) redirect('/login')
 
   // Find all WhatsApp-enabled agents for this user

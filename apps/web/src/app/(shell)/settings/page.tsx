@@ -1,4 +1,4 @@
-import { auth } from '@/auth'
+import { getSession } from '@/auth'
 import { redirect } from 'next/navigation'
 import { prisma, IntegrationProvider } from '@voicecraft/db'
 import { getUserSubscription, getCurrentUsageRecord } from '@/lib/subscription'
@@ -115,7 +115,7 @@ function extractEmailFromMetadata(metadata: unknown): string | undefined {
 // ---------------------------------------------------------------------------
 
 export default async function SettingsPage() {
-  const session = await auth()
+  const session = await getSession()
   if (!session?.user?.id) redirect('/login')
 
   const userId = session.user.id

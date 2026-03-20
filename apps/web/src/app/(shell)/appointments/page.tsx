@@ -1,4 +1,4 @@
-import { auth } from '@/auth'
+import { getSession } from '@/auth'
 import { redirect } from 'next/navigation'
 import { prisma, AppointmentStatus, IntegrationProvider } from '@voicecraft/db'
 import type { AgentConfig } from '@/lib/builder-types'
@@ -10,7 +10,7 @@ import { getUserTimezone, startOfDayInTimezone } from '@/lib/timezone-utils'
 export const metadata = { title: 'Appointments' }
 
 export default async function AppointmentsPage() {
-  const session = await auth()
+  const session = await getSession()
   if (!session?.user?.id) redirect('/login')
 
   const userId = session.user.id

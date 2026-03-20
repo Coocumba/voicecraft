@@ -1,4 +1,4 @@
-import { auth } from '@/auth'
+import { getSession } from '@/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@voicecraft/db'
 import { ContactsClient } from '@/components/contacts/ContactsClient'
@@ -7,7 +7,7 @@ import type { ContactCardData } from '@/components/contacts/ContactCard'
 export const metadata = { title: 'Contacts' }
 
 export default async function ContactsPage() {
-  const session = await auth()
+  const session = await getSession()
   if (!session?.user?.id) redirect('/login')
 
   const userId = session.user.id

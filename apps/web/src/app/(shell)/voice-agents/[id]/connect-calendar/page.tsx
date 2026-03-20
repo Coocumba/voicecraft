@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { auth } from '@/auth'
+import { getSession } from '@/auth'
 import { prisma, IntegrationProvider } from '@voicecraft/db'
 import type { AgentConfig } from '@/lib/builder-types'
 import { CalendarConnectButtons } from '@/components/integrations/CalendarConnectButtons'
@@ -12,7 +12,7 @@ interface PageProps {
 export const metadata = { title: 'Connect Calendar' }
 
 export default async function ConnectCalendarPage({ params }: PageProps) {
-  const session = await auth()
+  const session = await getSession()
   if (!session?.user?.id) redirect('/login')
 
   const { id } = await params

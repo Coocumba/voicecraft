@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { auth } from '@/auth'
+import { getSession } from '@/auth'
 import { prisma } from '@voicecraft/db'
 import { TestCallClient } from '@/components/agents/TestCallClient'
 
@@ -11,7 +11,7 @@ interface PageProps {
 export const metadata = { title: 'Test Call' }
 
 export default async function VoiceAgentTestPage({ params }: PageProps) {
-  const session = await auth()
+  const session = await getSession()
   if (!session?.user?.id) redirect('/login')
 
   const { id } = await params

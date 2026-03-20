@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
-import { auth } from '@/auth'
+import { getSession } from '@/auth'
 import { prisma, PhoneNumberStatus } from '@voicecraft/db'
 import { canProvisionNumbers } from '@/lib/twilio'
 import { ChooseNumberClient } from '@/components/agents/ChooseNumberClient'
@@ -11,7 +11,7 @@ interface PageProps {
 export const metadata = { title: 'Choose a Number' }
 
 export default async function ChooseNumberPage({ params }: PageProps) {
-  const session = await auth()
+  const session = await getSession()
   if (!session?.user?.id) redirect('/login')
 
   const { id } = await params

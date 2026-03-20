@@ -1,4 +1,4 @@
-import { auth } from '@/auth'
+import { getSession } from '@/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@voicecraft/db'
 import { CallsList } from '@/components/calls/CallsList'
@@ -8,7 +8,7 @@ import { getUserTimezone, startOfDayInTimezone } from '@/lib/timezone-utils'
 export const metadata = { title: 'Calls' }
 
 export default async function CallsPage() {
-  const session = await auth()
+  const session = await getSession()
   if (!session?.user?.id) redirect('/login')
 
   const userId = session.user.id

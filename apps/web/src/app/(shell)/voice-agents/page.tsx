@@ -1,4 +1,4 @@
-import { auth } from '@/auth'
+import { getSession } from '@/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { prisma, AgentStatus } from '@voicecraft/db'
@@ -27,7 +27,7 @@ function statusLabel(status: AgentStatus) {
 }
 
 export default async function VoiceAgentsPage() {
-  const session = await auth()
+  const session = await getSession()
   if (!session?.user?.id) redirect('/login')
 
   const agents = await prisma.agent.findMany({
