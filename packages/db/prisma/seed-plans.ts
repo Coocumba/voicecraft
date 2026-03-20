@@ -3,14 +3,10 @@ import { PrismaClient, PlanTier } from "@prisma/client"
 /**
  * Upserts the 3 plan tiers into the Plan table.
  *
- * Stripe price IDs are placeholders — replace with real IDs from the Stripe
- * Dashboard after creating the Product and Prices there.
+ * Stripe price IDs are from the Stripe Dashboard. They are not secrets —
+ * they're public product identifiers, so they live directly in code.
  *
- * Prices are stored in cents:
- *   monthlyPrice        — flat monthly charge
- *   annualPricePerMonth — display value (price / 12), shown on pricing page
- *   annualPriceTotal    — actual annual charge sent to Stripe
- *   overagePerMinute    — cents per minute over the included quota
+ * To update: change the IDs below, run `npx prisma db seed`.
  */
 export async function seedPlans(prisma: PrismaClient): Promise<void> {
   const plans = [
@@ -23,9 +19,9 @@ export async function seedPlans(prisma: PrismaClient): Promise<void> {
       minutesIncluded: 500,
       overagePerMinute: 5,
       maxAgents: 1,
-      stripePriceMonthly: process.env.STRIPE_PRICE_STARTER_MONTHLY ?? "price_starter_monthly_placeholder",
-      stripePriceAnnual: process.env.STRIPE_PRICE_STARTER_ANNUAL ?? "price_starter_annual_placeholder",
-      stripeOveragePrice: process.env.STRIPE_PRICE_STARTER_OVERAGE ?? "price_starter_overage_placeholder",
+      stripePriceMonthly: "price_1TD8UdKFFbrvd46zwNXXzoqz",
+      stripePriceAnnual: "price_1TD8UdKFFbrvd46zd4i8safe",
+      stripeOveragePrice: "price_1TD8Z8KFFbrvd46zTmiSAZnj",
     },
     {
       tier: PlanTier.GROWTH,
@@ -36,9 +32,9 @@ export async function seedPlans(prisma: PrismaClient): Promise<void> {
       minutesIncluded: 1500,
       overagePerMinute: 4,
       maxAgents: 3,
-      stripePriceMonthly: process.env.STRIPE_PRICE_GROWTH_MONTHLY ?? "price_growth_monthly_placeholder",
-      stripePriceAnnual: process.env.STRIPE_PRICE_GROWTH_ANNUAL ?? "price_growth_annual_placeholder",
-      stripeOveragePrice: process.env.STRIPE_PRICE_GROWTH_OVERAGE ?? "price_growth_overage_placeholder",
+      stripePriceMonthly: "price_1TD8UdKFFbrvd46zEN0SUY5U",
+      stripePriceAnnual: "price_1TD8UdKFFbrvd46z2xzvegxU",
+      stripeOveragePrice: "price_1TD8a2KFFbrvd46zDrMXucyU",
     },
     {
       tier: PlanTier.PROFESSIONAL,
@@ -49,9 +45,9 @@ export async function seedPlans(prisma: PrismaClient): Promise<void> {
       minutesIncluded: 5000,
       overagePerMinute: 3,
       maxAgents: 10,
-      stripePriceMonthly: process.env.STRIPE_PRICE_PRO_MONTHLY ?? "price_professional_monthly_placeholder",
-      stripePriceAnnual: process.env.STRIPE_PRICE_PRO_ANNUAL ?? "price_professional_annual_placeholder",
-      stripeOveragePrice: process.env.STRIPE_PRICE_PRO_OVERAGE ?? "price_professional_overage_placeholder",
+      stripePriceMonthly: "price_1TD8UdKFFbrvd46ztt7SQfNV",
+      stripePriceAnnual: "price_1TD8UdKFFbrvd46z2xzvegxU",
+      stripeOveragePrice: "price_1TD8b3KFFbrvd46zxvUPk27b",
     },
   ]
 
