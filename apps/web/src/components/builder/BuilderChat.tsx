@@ -256,15 +256,18 @@ export function BuilderChat({
             </div>
           )}
 
-          {/* Inline summary + CTA */}
+          {/* Inline summary + CTA — aligned with assistant messages */}
           {generatedConfig && (
-            <div className="self-start w-full max-w-md">
-              <InlineSummaryCard
-                config={generatedConfig}
-                onSave={() => void handleSave()}
-                saving={isSaving}
-                editMode={editMode}
-              />
+            <div className="flex gap-2.5 items-start">
+              <div className="w-7 flex-shrink-0" />
+              <div className="max-w-md">
+                <InlineSummaryCard
+                  config={generatedConfig}
+                  onSave={() => void handleSave()}
+                  saving={isSaving}
+                  editMode={editMode}
+                />
+              </div>
             </div>
           )}
 
