@@ -109,6 +109,7 @@ model Subscription {
   trialStart            DateTime?
   trialEnd              DateTime?
   cancelAtPeriodEnd     Boolean             @default(false)
+  pendingPlanTier       PlanTier?                   // set when a downgrade is scheduled; enforcement reads this for agent cap during grace period
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
   usageRecords          UsageRecord[]
