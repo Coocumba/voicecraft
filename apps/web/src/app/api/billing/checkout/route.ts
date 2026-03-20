@@ -84,24 +84,90 @@ export async function POST(request: Request) {
       existingSub !== null &&
       (existingSub.status === "CANCELED" || existingSub.status === "PAUSED")
 
+    if (!isResubscribing) {
+      // ── First-time user: create trial subscription directly (no card required) ──
+      // No Stripe Checkout — we create the subscription server-side with a trial
+      // period. The user never sees a payment form until the trial ends.
+      const subscription = await stripe.subscriptions.create({
+        customer: stripeCustomerId,
+        items: [
+          { price: flatPriceId },
+          { price: overagePriceId },
+        ],
+        trial_period_days: TRIAL_DAYS,
+        payment_behavior: "default_incomplete",
+        payment_settings: {
+          save_default_payment_method: "on_subscription",
+        },
+        metadata: {
+          voicecraftUserId: user.id,
+          planTier: tier,
+          billingCycle: cycle,
+        },
+      })
+
+      // Create local subscription record (webhook will upsert if it arrives later)
+      const periodStart = subscription.items.data[0]?.current_period_start
+      const periodEnd = subscription.items.data[0]?.current_period_end
+
+      await prisma.subscription.upsert({
+        where: { stripeSubscriptionId: subscription.id },
+        update: {
+          status: "TRIALING",
+          stripePriceId: flatPriceId,
+          planTier: plan.tier,
+          billingCycle: cycle === "ANNUAL" ? "ANNUAL" : "MONTHLY",
+          currentPeriodStart: periodStart ? new Date(periodStart * 1000) : new Date(),
+          currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : new Date(),
+          trialStart: subscription.trial_start ? new Date(subscription.trial_start * 1000) : new Date(),
+          trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
+        },
+        create: {
+          userId: user.id,
+          planId: plan.id,
+          stripeSubscriptionId: subscription.id,
+          stripePriceId: flatPriceId,
+          status: "TRIALING",
+          planTier: plan.tier,
+          billingCycle: cycle === "ANNUAL" ? "ANNUAL" : "MONTHLY",
+          currentPeriodStart: periodStart ? new Date(periodStart * 1000) : new Date(),
+          currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : new Date(),
+          trialStart: subscription.trial_start ? new Date(subscription.trial_start * 1000) : new Date(),
+          trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
+          usageRecords: {
+            create: {
+              userId: user.id,
+              periodStart: periodStart ? new Date(periodStart * 1000) : new Date(),
+              periodEnd: periodEnd ? new Date(periodEnd * 1000) : new Date(),
+              minutesIncluded: plan.minutesIncluded,
+              maxAgents: plan.maxAgents,
+              overagePerMinute: plan.overagePerMinute,
+            },
+          },
+        },
+      })
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { subscriptionVersion: { increment: 1 } },
+      })
+
+      // No redirect to Stripe — send user straight to the dashboard
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ""
+      return Response.json({ url: `${appUrl}/dashboard?checkout=success` })
+    }
+
+    // ── Re-subscribing user: use Stripe Checkout (card required, no trial) ──
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ""
 
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: stripeCustomerId,
       line_items: [
-        {
-          price: flatPriceId,
-          quantity: 1,
-        },
-        {
-          price: overagePriceId,
-          // Metered/overage prices are quantity-less — Stripe infers usage from
-          // usage records reported against the subscription item.
-        },
+        { price: flatPriceId, quantity: 1 },
+        { price: overagePriceId },
       ],
       subscription_data: {
-        ...(!isResubscribing ? { trial_period_days: TRIAL_DAYS } : {}),
         metadata: {
           voicecraftUserId: user.id,
           planTier: tier,
@@ -109,7 +175,7 @@ export async function POST(request: Request) {
         },
       },
       success_url: `${appUrl}/dashboard?checkout=success`,
-      cancel_url: `${appUrl}/choose-plan`,
+      cancel_url: `${appUrl}/dashboard/choose-plan`,
     })
 
     return Response.json({ url: checkoutSession.url })
