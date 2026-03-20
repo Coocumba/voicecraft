@@ -121,7 +121,7 @@ export function BillingSection() {
     return (
       <p className="text-sm text-muted">
         No subscription found.{' '}
-        <a href="/dashboard/choose-plan" className="text-accent underline underline-offset-2">
+        <a href="/choose-plan" className="text-accent underline underline-offset-2">
           Choose a plan
         </a>
         .
@@ -162,7 +162,7 @@ export function BillingSection() {
                 : 'Trial has ended'}
               {' — '}
               <a
-                href="/dashboard/choose-plan"
+                href="/choose-plan"
                 className="text-accent underline underline-offset-2 hover:text-accent/80 transition-colors"
               >
                 add a payment method

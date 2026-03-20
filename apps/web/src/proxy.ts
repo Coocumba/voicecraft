@@ -25,12 +25,10 @@ export default auth(async (req) => {
     return NextResponse.redirect(new URL("/verify-email", req.nextUrl))
   }
 
-  // Subscription check — exempt choose-plan page to avoid redirect loop.
-  // Also exempt the seeded demo user for local development.
-  const isChoosePlan = pathname.startsWith("/dashboard/choose-plan")
+  // Subscription check — exempt the seeded demo user for local development.
   const isDemoUser = session.user.email === "admin@voicecraft.dev"
 
-  if (!isChoosePlan && !isDemoUser) {
+  if (!isDemoUser) {
     // The JWT may carry stale (or missing) subscription status if the user
     // subscribed after their last sign-in. Since proxy runs on Node.js, we
     // can do a lightweight DB check when the JWT says "no subscription".
@@ -45,7 +43,7 @@ export default auth(async (req) => {
     }
 
     if (!subscriptionStatus) {
-      return NextResponse.redirect(new URL("/dashboard/choose-plan", req.nextUrl))
+      return NextResponse.redirect(new URL("/choose-plan", req.nextUrl))
     }
   }
 

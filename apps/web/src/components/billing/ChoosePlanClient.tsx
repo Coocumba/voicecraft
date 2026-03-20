@@ -64,6 +64,9 @@ export function ChoosePlanClient({ plans }: ChoosePlanClientProps) {
 
   return (
     <div className="min-h-screen bg-cream flex flex-col items-center px-4 sm:px-6 py-12 sm:py-16">
+      {/* Logo */}
+      <p className="font-serif text-lg text-ink mb-8">VoiceCraft</p>
+
       {/* Heading */}
       <div className="text-center mb-10 sm:mb-12 max-w-xl">
         <h1 className="font-serif text-2xl sm:text-3xl text-ink mb-3">

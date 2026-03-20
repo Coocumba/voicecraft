@@ -109,7 +109,7 @@ export async function POST(request: Request) {
         },
       },
       success_url: `${appUrl}/dashboard?checkout=success`,
-      cancel_url: `${appUrl}/dashboard/choose-plan`,
+      cancel_url: `${appUrl}/choose-plan`,
     })
 
     return Response.json({ url: checkoutSession.url })
