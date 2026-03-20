@@ -106,6 +106,11 @@ export function ChoosePlanClient({ plans }: ChoosePlanClientProps) {
       </div>
 
       {/* Plan cards */}
+      {plans.length === 0 && (
+        <div className="text-center text-muted text-sm py-12">
+          Plans are being configured. Please check back shortly.
+        </div>
+      )}
       <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-5">
         {plans.map((plan) => {
           const isGrowth = plan.tier === 'GROWTH'
