@@ -10,6 +10,53 @@ function isValidOutcome(value: unknown): value is CallOutcome {
   return typeof value === "string" && VALID_OUTCOMES.includes(value)
 }
 
+/**
+ * Track call duration against usage records and enforce trial limits.
+ * Runs after the response is sent so the agent gets a fast 201.
+ */
+async function trackUsageAfterCall(userId: string, duration: number) {
+  const subscription = await prisma.subscription.findUnique({
+    where: { userId },
+    select: { id: true, status: true },
+  })
+
+  if (!subscription) return
+
+  const usageRecord = await getCurrentUsageRecord(userId, subscription.id)
+  if (!usageRecord) return
+
+  const prevMinutes = usageRecord.minutesUsed
+  const updated = await incrementUsage(
+    usageRecord.subscriptionId,
+    usageRecord.periodStart,
+    duration
+  )
+
+  if (!updated) return
+
+  if (subscription.status === "TRIALING" && isTrialMinutesExhausted(updated.minutesUsed)) {
+    await pauseUserAgents(userId)
+    console.warn("[POST /api/calls] Trial minutes exhausted — agents paused", {
+      userId,
+      minutesUsed: updated.minutesUsed,
+    })
+  } else {
+    const crossed = checkThresholdCrossed(
+      prevMinutes,
+      updated.minutesUsed,
+      updated.minutesIncluded
+    )
+    if (crossed) {
+      console.info("[POST /api/calls] Usage threshold crossed", {
+        userId,
+        threshold: crossed.label,
+        minutesUsed: updated.minutesUsed,
+        minutesIncluded: updated.minutesIncluded,
+      })
+    }
+  }
+}
+
 export async function GET(request: Request) {
   const session = await auth()
   if (!session?.user?.id) {
@@ -128,12 +175,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Verify the agent exists before logging a call against it
-    const agent = await prisma.agent.findUnique({ where: { id: agentId } })
-    if (!agent) {
-      return Response.json({ error: "Agent not found" }, { status: 404 })
-    }
-
+    // Combine agent lookup + call creation into a single create with a
+    // relation check — Prisma will fail if the agentId doesn't exist
+    // (foreign key constraint), so we don't need a separate findUnique.
     const call = await prisma.call.create({
       data: {
         agentId: agentId.trim(),
@@ -143,76 +187,34 @@ export async function POST(request: Request) {
         transcript: typeof transcript === "string" ? transcript : undefined,
         summary: typeof summary === "string" ? summary : undefined,
       },
+      include: { agent: { select: { userId: true } } },
     })
 
-    // Track call duration against the user's usage record.
-    // Awaited so trial exhaustion (hard limit) is reliably enforced.
-    // Wrapped in its own try/catch so a billing failure never prevents
-    // the call record from being returned to the agent worker.
+    // Return the response immediately — the agent worker doesn't need
+    // to wait for usage tracking or contact upserts.
+    const response = Response.json({ call: { id: call.id } }, { status: 201 })
+
+    // Usage tracking and contact upsert run after the response is sent.
+    // We use waitUntil-style fire-and-forget so the agent gets a fast 201.
+    const userId = call.agent.userId
+
     if (typeof duration === "number" && duration > 0) {
-      try {
-        // Fetch subscription once — reuse its id for the usage record lookup and
-        // its status for the trial exhaustion check, avoiding two separate queries.
-        const subscription = await prisma.subscription.findUnique({
-          where: { userId: agent.userId },
-          select: { id: true, status: true },
-        })
-
-        if (subscription) {
-          const usageRecord = await getCurrentUsageRecord(agent.userId, subscription.id)
-          if (usageRecord) {
-            const prevMinutes = usageRecord.minutesUsed
-            const updated = await incrementUsage(
-              usageRecord.subscriptionId,
-              usageRecord.periodStart,
-              duration
-            )
-
-            if (updated) {
-              // If the user is on a trial and has exhausted their free minutes,
-              // pause all their agents immediately (hard limit).
-              if (subscription.status === "TRIALING" && isTrialMinutesExhausted(updated.minutesUsed)) {
-                await pauseUserAgents(agent.userId)
-                console.warn("[POST /api/calls] Trial minutes exhausted — agents paused", {
-                  userId: agent.userId,
-                  minutesUsed: updated.minutesUsed,
-                })
-              } else {
-                const crossed = checkThresholdCrossed(
-                  prevMinutes,
-                  updated.minutesUsed,
-                  updated.minutesIncluded
-                )
-                if (crossed) {
-                  // TODO: Send threshold alert email via Resend
-                  console.info("[POST /api/calls] Usage threshold crossed", {
-                    userId: agent.userId,
-                    threshold: crossed.label,
-                    minutesUsed: updated.minutesUsed,
-                    minutesIncluded: updated.minutesIncluded,
-                  })
-                }
-              }
-            }
-          }
-        }
-      } catch (usageErr) {
-        console.error("[POST /api/calls] Usage tracking failed", usageErr)
-      }
+      trackUsageAfterCall(userId, duration).catch((err) => {
+        console.error("[POST /api/calls] Usage tracking failed", err)
+      })
     }
 
-    // Fire-and-forget contact upsert — does not block the response
     if (typeof callerNumber === "string" && callerNumber.trim() !== "") {
       const phone = callerNumber.trim()
       prisma.contact
         .upsert({
-          where: { userId_phone: { userId: agent.userId, phone } },
+          where: { userId_phone: { userId, phone } },
           update: {
             callCount: { increment: 1 },
             lastCalledAt: new Date(),
           },
           create: {
-            userId: agent.userId,
+            userId,
             phone,
             callCount: 1,
             lastCalledAt: new Date(),
@@ -223,8 +225,14 @@ export async function POST(request: Request) {
         })
     }
 
-    return Response.json({ call }, { status: 201 })
+    return response
   } catch (err) {
+    // If the call create fails (e.g. invalid agentId foreign key),
+    // check if it's a not-found error
+    const message = err instanceof Error ? err.message : String(err)
+    if (message.includes("Foreign key constraint")) {
+      return Response.json({ error: "Agent not found" }, { status: 404 })
+    }
     console.error("[POST /api/calls]", err)
     return Response.json({ error: "Internal server error" }, { status: 500 })
   }
