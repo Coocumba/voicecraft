@@ -30,7 +30,7 @@ voicecraft/
 │   ├── web/                        # Next.js 16 — frontend + REST API + agent builder
 │   │   └── src/
 │   │       ├── auth.ts             # NextAuth configuration
-│   │       ├── middleware.ts       # Route protection (/dashboard/*)
+│   │       ├── proxy.ts            # Route protection (/dashboard/*)
 │   │       ├── app/
 │   │       │   ├── login/          # Login page
 │   │       │   ├── dashboard/      # Protected dashboard (agents, calls, settings)

@@ -133,7 +133,7 @@ NextAuth v5 (Auth.js) with Credentials provider, JWT sessions, DB-backed user lo
 | Concern | Location | Notes |
 |---|---|---|
 | Config | `src/auth.ts` | Credentials provider, Prisma user lookup |
-| Route protection | `src/middleware.ts` | Guards `/dashboard/*` |
+| Route protection | `src/proxy.ts` | Guards `/dashboard/*` (Next.js 16 proxy, Node.js runtime) |
 | Login page | `src/app/login/` | Server action → redirects to `/dashboard` |
 | Components | `src/components/auth/` | `LoginForm`, `SignOutButton` |
 | Session provider | `src/components/providers/SessionProvider.tsx` | Wraps app in root layout |

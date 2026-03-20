@@ -101,32 +101,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id
         token.name = user.name
         token.emailVerified = (user as { emailVerified?: Date | null }).emailVerified ?? null
+      }
 
-        // Fetch subscription data on sign-in only (runs in Node.js context).
-        // The jwt callback also runs on every request via middleware (Edge Runtime),
-        // where Prisma is NOT available. So we only do DB reads when `user` is
-        // present (sign-in flow). Subscription status may be stale between sign-ins,
-        // but real enforcement happens at the API route level (Node.js), not here.
+      // Fetch subscription status on sign-in and on client-triggered updates.
+      // The jwt callback runs in Node.js context (Next.js 16 proxy runs on
+      // Node.js, not Edge), so Prisma is available here.
+      const userId = (user?.id ?? token.id) as string | undefined
+      if (userId && (user || trigger === "update")) {
         const sub = await prisma.subscription.findUnique({
-          where: { userId: user.id as string },
+          where: { userId },
           select: { status: true, planTier: true },
         })
         token.subscriptionStatus = sub?.status ?? null
         token.planTier = sub?.planTier ?? null
       }
 
-      if (trigger === "update") {
-        if (typeof session?.name === "string") {
-          token.name = session.name
-        }
-        // Allow client-side session update to refresh subscription status
-        // (e.g. after completing checkout, call update({ subscriptionStatus, planTier }))
-        if (typeof session?.subscriptionStatus === "string") {
-          token.subscriptionStatus = session.subscriptionStatus
-        }
-        if (typeof session?.planTier === "string") {
-          token.planTier = session.planTier
-        }
+      if (trigger === "update" && typeof session?.name === "string") {
+        token.name = session.name
       }
       return token
     },
