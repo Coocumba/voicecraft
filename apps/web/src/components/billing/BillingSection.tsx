@@ -195,12 +195,13 @@ export function BillingSection() {
 
       {/* Trial CTA */}
       {isTrialing && (
-        <a
-          href="/choose-plan"
-          className="block text-center text-sm text-accent hover:text-accent/80 transition-colors py-2"
+        <button
+          onClick={() => void handleManageBilling()}
+          disabled={portalLoading}
+          className="w-full text-center text-sm text-accent hover:text-accent/80 transition-colors py-2 disabled:opacity-50"
         >
           Add a payment method to keep your agent active after the trial &rarr;
-        </a>
+        </button>
       )}
 
       {/* Past due CTA */}
