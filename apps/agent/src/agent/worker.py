@@ -384,10 +384,11 @@ async def entrypoint(ctx: JobContext) -> None:
     # Then ensure call logging completes before the entrypoint returns.
     # The timeout prevents the entrypoint from hanging indefinitely if the
     # Next.js /api/calls endpoint is slow or unreachable during teardown.
+    # Must exceed the HTTP timeout (10 s) to avoid racing the request.
     try:
-        await asyncio.wait_for(log_done.wait(), timeout=5.0)
+        await asyncio.wait_for(log_done.wait(), timeout=15.0)
     except asyncio.TimeoutError:
-        log.warning("call_log_timeout", detail="call log did not complete within 5 s; proceeding with teardown")
+        log.warning("call_log_timeout", detail="call log did not complete within 15 s; proceeding with teardown")
 
 
 if __name__ == "__main__":
