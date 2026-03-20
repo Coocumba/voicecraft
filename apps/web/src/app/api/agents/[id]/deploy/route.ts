@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { prisma, AgentStatus } from "@voicecraft/db"
 import { SipClient } from "livekit-server-sdk"
 import { configureNumberVoiceWebhook, canProvisionNumbers } from "@/lib/twilio"
+import { getUserSubscription, isSubscriptionBlocked } from "@/lib/subscription"
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -97,6 +98,16 @@ export async function POST(_request: Request, { params }: RouteContext) {
   const { id } = await params
 
   try {
+    // Subscription gate — must come before agent lookup so blocked users get
+    // a clear 403 rather than a potentially misleading 404 or 422.
+    const subscription = await getUserSubscription(session.user.id)
+    if (!subscription || isSubscriptionBlocked(subscription.status)) {
+      return Response.json(
+        { error: "An active subscription is required to deploy agents" },
+        { status: 403 }
+      )
+    }
+
     const existing = await prisma.agent.findUnique({ where: { id } })
 
     if (!existing) {

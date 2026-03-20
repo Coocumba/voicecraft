@@ -1,5 +1,7 @@
 import { auth } from "@/auth"
 import { prisma } from "@voicecraft/db"
+import { getEffectiveMaxAgents } from "@/lib/plans"
+import { getUserSubscription, isSubscriptionBlocked } from "@/lib/subscription"
 
 export async function GET() {
   const session = await auth()
@@ -24,6 +26,30 @@ export async function POST(request: Request) {
   const session = await auth()
   if (!session?.user?.id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  // Enforce subscription and agent cap before doing any body parsing.
+  const subscription = await getUserSubscription(session.user.id)
+  if (!subscription || isSubscriptionBlocked(subscription.status)) {
+    return Response.json(
+      { error: "An active subscription is required to create agents" },
+      { status: 403 }
+    )
+  }
+
+  // Concurrency-safe count using SELECT ... FOR UPDATE so two simultaneous
+  // requests cannot both pass the limit check and both create an agent.
+  const [{ count }] = await prisma.$queryRaw<[{ count: bigint }]>`
+    SELECT COUNT(*) as count FROM "Agent"
+    WHERE "userId" = ${session.user.id} AND "status" != 'INACTIVE'
+    FOR UPDATE
+  `
+  const maxAgents = await getEffectiveMaxAgents(subscription)
+  if (Number(count) >= maxAgents) {
+    return Response.json(
+      { error: `Agent limit reached. Your plan allows up to ${maxAgents} active agent(s).` },
+      { status: 403 }
+    )
   }
 
   let body: unknown
