@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { PublicHeader } from "@/components/layout/PublicHeader"
 import { PublicFooter } from "@/components/layout/PublicFooter"
-import { LegalPageLayout } from "@/components/layout/LegalSidebar"
+import { LegalPageLayout } from "@/components/layout/LegalPageLayout"
 
 export const metadata = {
   title: "Privacy Policy",
@@ -37,11 +37,13 @@ export default async function PrivacyPage() {
       <PublicHeader ctaHref={ctaHref} signInLabel={signInLabel} />
 
       {/* Hero */}
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 pt-16 sm:pt-20 pb-12 sm:pb-16 text-center">
-        <h1 className="font-serif text-4xl sm:text-5xl text-ink leading-tight mb-4">
-          Privacy Policy
-        </h1>
-        <p className="text-sm text-muted">Last updated March 20, 2026</p>
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-16 sm:pt-20 pb-12 sm:pb-16">
+        <div className="lg:pl-[calc(14rem+2.5rem)] text-center lg:text-left">
+          <h1 className="font-serif text-4xl sm:text-5xl text-ink leading-tight mb-4">
+            Privacy Policy
+          </h1>
+          <p className="text-sm text-muted">Last updated March 20, 2026</p>
+        </div>
       </section>
 
       {/* Sidebar + Content layout */}
@@ -147,7 +149,7 @@ export default async function PrivacyPage() {
           <div className="space-y-4 text-base text-ink/80 leading-relaxed">
             <p>We share data with the following providers to operate the service:</p>
 
-            <div className="rounded-xl border border-border overflow-hidden">
+            <div className="rounded-xl border border-border overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-cream text-left">

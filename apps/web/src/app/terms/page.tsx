@@ -2,7 +2,7 @@ import Link from "next/link"
 import { auth } from "@/auth"
 import { PublicHeader } from "@/components/layout/PublicHeader"
 import { PublicFooter } from "@/components/layout/PublicFooter"
-import { LegalPageLayout } from "@/components/layout/LegalSidebar"
+import { LegalPageLayout } from "@/components/layout/LegalPageLayout"
 
 export const metadata = {
   title: "Terms of Service",
@@ -40,11 +40,13 @@ export default async function TermsPage() {
       <PublicHeader ctaHref={ctaHref} signInLabel={signInLabel} />
 
       {/* Hero */}
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 pt-16 sm:pt-20 pb-12 sm:pb-16 text-center">
-        <h1 className="font-serif text-4xl sm:text-5xl text-ink leading-tight mb-4">
-          Terms of Service
-        </h1>
-        <p className="text-sm text-muted">Last updated March 20, 2026</p>
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-16 sm:pt-20 pb-12 sm:pb-16">
+        <div className="lg:pl-[calc(14rem+2.5rem)] text-center lg:text-left">
+          <h1 className="font-serif text-4xl sm:text-5xl text-ink leading-tight mb-4">
+            Terms of Service
+          </h1>
+          <p className="text-sm text-muted">Last updated March 20, 2026</p>
+        </div>
       </section>
 
       {/* Sidebar + Content layout */}
