@@ -70,12 +70,15 @@ export async function POST(request: Request) {
     // The SELECT ... FOR UPDATE acquires a row-level lock for the duration of the
     // transaction, preventing interleaved inserts from the same user.
     const agent = await prisma.$transaction(async (tx) => {
-      const [{ count }] = await tx.$queryRaw<[{ count: bigint }]>`
-        SELECT COUNT(*) as count FROM "Agent"
+      // Lock the user's agent rows for the duration of the transaction.
+      // This prevents two concurrent requests from both reading below
+      // the limit and both inserting.
+      const lockedAgents = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id" FROM "Agent"
         WHERE "userId" = ${session.user.id} AND "status" != 'INACTIVE'
         FOR UPDATE
       `
-      if (Number(count) >= maxAgents) {
+      if (lockedAgents.length >= maxAgents) {
         throw Object.assign(new Error("AGENT_LIMIT_REACHED"), { maxAgents })
       }
 
