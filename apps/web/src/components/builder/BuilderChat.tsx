@@ -258,17 +258,13 @@ export function BuilderChat({
 
           {/* Inline summary + CTA */}
           {generatedConfig && (
-            <div className="self-start w-full max-w-[80%]">
-              <InlineSummaryCard config={generatedConfig} />
-              <button
-                onClick={() => void handleSave()}
-                disabled={isSaving}
-                className="w-full bg-accent text-white py-3 rounded-xl font-medium text-sm hover:bg-accent/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-2"
-              >
-                {isSaving
-                  ? editMode ? 'Saving changes…' : 'Creating agent…'
-                  : editMode ? 'Save changes' : 'Create Agent'}
-              </button>
+            <div className="self-start w-full max-w-md">
+              <InlineSummaryCard
+                config={generatedConfig}
+                onSave={() => void handleSave()}
+                saving={isSaving}
+                editMode={editMode}
+              />
             </div>
           )}
 
