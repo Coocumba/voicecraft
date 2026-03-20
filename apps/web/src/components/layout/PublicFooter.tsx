@@ -25,6 +25,14 @@ export function PublicFooter() {
           <Link href="/login" className="hover:text-ink transition-colors">
             Sign in
           </Link>
+          <span className="text-border hidden sm:inline">&middot;</span>
+          <Link href="/privacy" className="hover:text-ink transition-colors">
+            Privacy
+          </Link>
+          <span className="text-border hidden sm:inline">&middot;</span>
+          <Link href="/terms" className="hover:text-ink transition-colors">
+            Terms
+          </Link>
         </div>
       </div>
     </footer>
