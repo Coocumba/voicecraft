@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { PlanCard } from '@/components/billing/PlanCard'
 
 interface Plan {
@@ -56,6 +57,7 @@ export function ChoosePlanClient({ plans }: ChoosePlanClientProps) {
         throw new Error('No checkout URL returned')
       }
     } catch {
+      toast.error('Could not start checkout. Please try again.')
       setLoadingTier(null)
     }
   }

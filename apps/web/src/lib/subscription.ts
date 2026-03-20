@@ -15,11 +15,12 @@ export async function getCurrentUsageRecord(userId: string) {
   })
   if (!subscription) return null
 
+  const now = new Date()
   return prisma.usageRecord.findFirst({
     where: {
       subscriptionId: subscription.id,
-      periodStart: { lte: new Date() },
-      periodEnd: { gte: new Date() },
+      periodStart: { lte: now },
+      periodEnd: { gte: now },
     },
     orderBy: { periodStart: "desc" },
   })

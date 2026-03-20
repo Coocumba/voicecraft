@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { prisma, AgentStatus, PhoneNumberStatus } from "@voicecraft/db"
 import { canProvisionNumbers, purchaseSpecificNumber, configureNumberVoiceWebhook } from "@/lib/twilio"
 import { acquireNumber, releaseNumber, extractAreaCode } from "@/lib/phone-pool"
+import { getUserSubscription, isSubscriptionBlocked } from "@/lib/subscription"
 import { SipClient } from "livekit-server-sdk"
 
 interface RouteContext {
@@ -20,6 +21,14 @@ export async function POST(request: Request, { params }: RouteContext) {
   const { id } = await params
 
   try {
+    const subscription = await getUserSubscription(session.user.id)
+    if (!subscription || isSubscriptionBlocked(subscription.status)) {
+      return Response.json(
+        { error: "An active subscription is required to provision phone numbers" },
+        { status: 403 }
+      )
+    }
+
     const agent = await prisma.agent.findUnique({ where: { id } })
 
     if (!agent) {

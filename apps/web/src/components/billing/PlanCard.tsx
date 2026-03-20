@@ -53,11 +53,7 @@ export function PlanCard({
   annualTotal,
 }: PlanCardProps) {
   const priceInDollars = Math.round(price / 100)
-  const overageInCents = overage
-  const overageDisplay =
-    overageInCents < 100
-      ? `$0.0${overageInCents}`
-      : `$${(overageInCents / 100).toFixed(2)}`
+  const overageDisplay = `$${(overage / 100).toFixed(2)}`
 
   const minutesFormatted = minutes.toLocaleString()
   const annualTotalDollars = Math.round(annualTotal / 100)

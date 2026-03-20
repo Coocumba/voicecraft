@@ -37,20 +37,7 @@ export async function POST(request: Request) {
     )
   }
 
-  // Concurrency-safe count using SELECT ... FOR UPDATE so two simultaneous
-  // requests cannot both pass the limit check and both create an agent.
-  const [{ count }] = await prisma.$queryRaw<[{ count: bigint }]>`
-    SELECT COUNT(*) as count FROM "Agent"
-    WHERE "userId" = ${session.user.id} AND "status" != 'INACTIVE'
-    FOR UPDATE
-  `
   const maxAgents = await getEffectiveMaxAgents(subscription)
-  if (Number(count) >= maxAgents) {
-    return Response.json(
-      { error: `Agent limit reached. Your plan allows up to ${maxAgents} active agent(s).` },
-      { status: 403 }
-    )
-  }
 
   let body: unknown
   try {
@@ -77,21 +64,43 @@ export async function POST(request: Request) {
 
   try {
     const configJson = config as Parameters<typeof prisma.agent.create>[0]["data"]["config"]
-    const agent = await prisma.agent.create({
-      data: {
-        userId: session.user.id,
-        name: name.trim(),
-        businessName: businessName.trim(),
-        config: configJson,
-        ...(voiceSettings !== undefined && voiceSettings !== null
-          ? { voiceSettings: voiceSettings as Parameters<typeof prisma.agent.create>[0]["data"]["voiceSettings"] }
-          : {}),
-        ...(typeof conversationId === "string" && conversationId ? { conversationId } : {}),
-      },
+
+    // Wrap the count check and create in a single transaction so two simultaneous
+    // requests cannot both pass the limit check and both create an agent.
+    // The SELECT ... FOR UPDATE acquires a row-level lock for the duration of the
+    // transaction, preventing interleaved inserts from the same user.
+    const agent = await prisma.$transaction(async (tx) => {
+      const [{ count }] = await tx.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(*) as count FROM "Agent"
+        WHERE "userId" = ${session.user.id} AND "status" != 'INACTIVE'
+        FOR UPDATE
+      `
+      if (Number(count) >= maxAgents) {
+        throw Object.assign(new Error("AGENT_LIMIT_REACHED"), { maxAgents })
+      }
+
+      return tx.agent.create({
+        data: {
+          userId: session.user.id,
+          name: name.trim(),
+          businessName: businessName.trim(),
+          config: configJson,
+          ...(voiceSettings !== undefined && voiceSettings !== null
+            ? { voiceSettings: voiceSettings as Parameters<typeof prisma.agent.create>[0]["data"]["voiceSettings"] }
+            : {}),
+          ...(typeof conversationId === "string" && conversationId ? { conversationId } : {}),
+        },
+      })
     })
 
     return Response.json({ agent }, { status: 201 })
   } catch (err) {
+    if (err instanceof Error && err.message === "AGENT_LIMIT_REACHED") {
+      return Response.json(
+        { error: `Agent limit reached. Your plan allows up to ${maxAgents} active agent(s).` },
+        { status: 403 }
+      )
+    }
     console.error("[POST /api/agents]", err)
     return Response.json({ error: "Internal server error" }, { status: 500 })
   }

@@ -25,12 +25,22 @@ export async function POST(request: NextRequest) {
     return new Response("Invalid signature", { status: 400 })
   }
 
-  // Idempotency check — skip events we've already processed
-  const existing = await prisma.stripeEvent.findUnique({
-    where: { id: event.id },
-  })
-  if (existing) {
-    return new Response("Already processed", { status: 200 })
+  // Idempotency: attempt to insert the event record before any processing.
+  // If two webhook deliveries arrive simultaneously, only one will succeed the
+  // INSERT — the other will hit the unique constraint (P2002) and return 200
+  // immediately, preventing double-processing without a separate read query.
+  try {
+    await prisma.stripeEvent.create({
+      data: { id: event.id, type: event.type },
+    })
+  } catch (err) {
+    const code = (err as { code?: string }).code
+    if (code === "P2002") {
+      // Already processed — idempotent success
+      return new Response("Already processed", { status: 200 })
+    }
+    console.error("[Stripe Webhook] Failed to record event:", err)
+    return new Response("Internal server error", { status: 500 })
   }
 
   try {
@@ -57,11 +67,6 @@ export async function POST(request: NextRequest) {
         // Unhandled event type — log and ignore
         console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`)
     }
-
-    // Record processed event for idempotency
-    await prisma.stripeEvent.create({
-      data: { id: event.id, type: event.type },
-    })
   } catch (err) {
     // Log error but still return 200 to prevent Stripe retries on bad logic.
     // Stripe will not retry on 2xx responses; errors here indicate application
@@ -122,7 +127,7 @@ async function handleSubscriptionCreated(sub: Stripe.Subscription) {
   const { periodStart, periodEnd } = extractSubscriptionPeriod(sub)
 
   // Upsert — record may already exist if the checkout API pre-created it
-  await prisma.subscription.upsert({
+  const upsertedSub = await prisma.subscription.upsert({
     where: { stripeSubscriptionId: sub.id },
     update: {
       status,
@@ -156,6 +161,27 @@ async function handleSubscriptionCreated(sub: Stripe.Subscription) {
           overagePerMinute: plan.overagePerMinute,
         },
       },
+    },
+  })
+
+  // Ensure the current period has a UsageRecord regardless of whether this was
+  // an insert or update path (e.g. subscription pre-created by checkout API).
+  await prisma.usageRecord.upsert({
+    where: {
+      subscriptionId_periodStart: {
+        subscriptionId: upsertedSub.id,
+        periodStart,
+      },
+    },
+    update: {},
+    create: {
+      userId: user.id,
+      subscriptionId: upsertedSub.id,
+      periodStart,
+      periodEnd,
+      minutesIncluded: plan.minutesIncluded,
+      maxAgents: plan.maxAgents,
+      overagePerMinute: plan.overagePerMinute,
     },
   })
 

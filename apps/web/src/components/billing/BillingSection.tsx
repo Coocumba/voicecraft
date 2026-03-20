@@ -131,10 +131,7 @@ export function BillingSection() {
 
   const { plan, usage } = data
   const daysLeft = trialDaysLeft(plan.trialEnd)
-  const overageDollars =
-    usage.overagePerMinute < 100
-      ? `$0.0${usage.overagePerMinute}`
-      : `$${(usage.overagePerMinute / 100).toFixed(2)}`
+  const overageDollars = `$${(usage.overagePerMinute / 100).toFixed(2)}`
 
   const isOver = usage.minutesUsed > usage.minutesIncluded
   const overageMinutes = isOver ? usage.minutesUsed - usage.minutesIncluded : 0
