@@ -73,3 +73,46 @@ export function isValidTimezone(tz: string): boolean {
     return false
   }
 }
+
+/**
+ * Read the user's IANA timezone from the `timezone` cookie.
+ * Falls back to UTC if the cookie is missing or invalid.
+ * Must be called in a Server Component / Route Handler (uses `next/headers`).
+ */
+export async function getUserTimezone(): Promise<string> {
+  const { cookies } = await import('next/headers')
+  const cookieStore = await cookies()
+  const tz = cookieStore.get('timezone')?.value
+  if (tz && isValidTimezone(tz)) return tz
+  return 'UTC'
+}
+
+/**
+ * Get the start-of-today as a UTC Date in the user's local timezone.
+ * e.g. if user is in America/New_York and it's 2026-03-20T01:00 local,
+ * this returns the UTC instant corresponding to 2026-03-20T00:00 in New York.
+ */
+export function startOfDayInTimezone(timezone: string, now?: Date): Date {
+  const d = now ?? new Date()
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  // en-CA formats as YYYY-MM-DD
+  const localDateStr = formatter.format(d)
+  return toUTC(`${localDateStr}T00:00:00`, timezone)
+}
+
+/**
+ * Get the current hour in the user's timezone (0-23).
+ */
+export function currentHourInTimezone(timezone: string): number {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    hour12: false,
+  })
+  return parseInt(formatter.format(new Date()), 10)
+}

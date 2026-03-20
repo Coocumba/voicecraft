@@ -2,6 +2,7 @@ import { getSession } from '@/auth'
 import { prisma, MessagingStatus, MessageChannel } from '@voicecraft/db'
 import { TopBar } from '@/components/layout/TopBar'
 import { SubscriptionBanner } from '@/components/billing/SubscriptionBanner'
+import { TimezoneSync } from '@/components/providers/TimezoneSync'
 
 export default async function ShellLayout({
   children,
@@ -29,6 +30,7 @@ export default async function ShellLayout({
 
   return (
     <div className="flex flex-col min-h-screen">
+      <TimezoneSync />
       <SubscriptionBanner />
       <TopBar
         userName={session?.user?.name}

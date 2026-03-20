@@ -77,6 +77,7 @@ export function CallCard({ call }: CallCardProps) {
       : null
   )
   const [loading, setLoading] = useState(false)
+  const [fetchError, setFetchError] = useState(false)
 
   const handleToggle = useCallback(async () => {
     if (expanded) {
@@ -87,26 +88,28 @@ export function CallCard({ call }: CallCardProps) {
     // If details were not loaded yet (e.g. list page omits them), fetch on demand
     if (!details) {
       setLoading(true)
+      setFetchError(false)
       try {
         const res = await fetch(`/api/calls/${call.id}`)
         if (res.ok) {
           const data: CallDetails = await res.json()
-          if (data.transcript || data.summary) {
-            setDetails(data)
-          } else {
-            // No details available for this call
-            setDetails({ transcript: null, summary: null })
-          }
+          setDetails(
+            data.transcript || data.summary
+              ? data
+              : { transcript: null, summary: null }
+          )
+        } else {
+          setFetchError(true)
         }
       } catch {
-        // Silently fail — the button just won't expand
+        setFetchError(true)
       } finally {
         setLoading(false)
       }
     }
 
     setExpanded(true)
-  }, [expanded, details, call.id])
+  }, [expanded, details, fetchError, call.id])
 
   const hasVisibleDetails = details?.transcript || details?.summary
 
@@ -195,7 +198,11 @@ export function CallCard({ call }: CallCardProps) {
           </div>
         )}
 
-        {expanded && !hasVisibleDetails && !loading && (
+        {expanded && fetchError && !loading && (
+          <p className="mt-3 text-xs text-muted">Failed to load details. Click again to retry.</p>
+        )}
+
+        {expanded && !hasVisibleDetails && !fetchError && !loading && (
           <p className="mt-3 text-xs text-muted">No transcript or summary available for this call.</p>
         )}
       </div>

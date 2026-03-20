@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { cn } from '@/lib/utils'
 
 interface LocalTimeProps {
   date: Date | string
@@ -40,7 +41,10 @@ export function LocalTime({ date, format = 'datetime', className }: LocalTimePro
   }, [date, format])
 
   return (
-    <time className={className} dateTime={typeof date === 'string' ? date : date.toISOString()}>
+    <time
+      className={cn('inline-block min-w-[8rem]', className)}
+      dateTime={typeof date === 'string' ? date : date.toISOString()}
+    >
       {formatted ?? '\u00A0'}
     </time>
   )

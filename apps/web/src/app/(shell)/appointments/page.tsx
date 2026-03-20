@@ -5,6 +5,7 @@ import type { AgentConfig } from '@/lib/builder-types'
 import { AppointmentsClient } from '@/components/appointments/AppointmentsClient'
 import type { AppointmentData } from '@/components/appointments/AppointmentCard'
 import { CalendarConnectButtons } from '@/components/integrations/CalendarConnectButtons'
+import { getUserTimezone, startOfDayInTimezone } from '@/lib/timezone-utils'
 
 export const metadata = { title: 'Appointments' }
 
@@ -47,8 +48,9 @@ export default async function AppointmentsPage() {
 
   const agentIds = agents.map((a) => a.id)
 
+  const tz = await getUserTimezone()
   const now = new Date()
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const todayStart = startOfDayInTimezone(tz, now)
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
 
   // Fetch appointments and stats in parallel

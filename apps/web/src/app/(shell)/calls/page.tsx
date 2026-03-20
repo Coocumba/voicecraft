@@ -3,12 +3,9 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@voicecraft/db'
 import { CallsList } from '@/components/calls/CallsList'
 import type { CallCardData } from '@/components/calls/CallCard'
+import { getUserTimezone, startOfDayInTimezone } from '@/lib/timezone-utils'
 
 export const metadata = { title: 'Calls' }
-
-function startOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
-}
 
 export default async function CallsPage() {
   const session = await auth()
@@ -16,9 +13,10 @@ export default async function CallsPage() {
 
   const userId = session.user.id
 
+  const tz = await getUserTimezone()
   const now = new Date()
-  const todayStart = startOfDay(now)
-  const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const todayStart = startOfDayInTimezone(tz, now)
+  const weekStart = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000)
 
   // Load everything in parallel
   const [calls, agents, todayCount, weekCount, totalCount] = await Promise.all([
@@ -82,8 +80,8 @@ export default async function CallsPage() {
       duration: call.duration,
       outcome: call.outcome as CallCardData['outcome'],
       // transcript and summary are not fetched on the list page to avoid
-      // transferring large Text fields. Set to null — the expand button
-      // in CallCard is hidden when both are null.
+      // transferring large Text fields. Set to null — CallCard will
+      // lazy-load them via /api/calls/[id] when the user expands a card.
       transcript: null,
       summary: null,
       createdAt: call.createdAt.toISOString(),

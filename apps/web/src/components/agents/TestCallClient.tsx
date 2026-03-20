@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, memo } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Room, RoomEvent, Track, LocalAudioTrack } from 'livekit-client'
+import type { Room as RoomType } from 'livekit-client'
 import { cn } from '@/lib/utils'
 
 interface AgentInfo {
@@ -31,7 +31,7 @@ function formatDuration(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-function Waveform({ active }: { active: boolean }) {
+const Waveform = memo(function Waveform({ active }: { active: boolean }) {
   const bars = [0.4, 0.7, 1, 0.6, 0.9, 0.5, 0.8, 0.45, 0.75, 0.55]
   return (
     <div className="flex items-center justify-center gap-1 h-10" aria-hidden="true">
@@ -51,7 +51,7 @@ function Waveform({ active }: { active: boolean }) {
       ))}
     </div>
   )
-}
+})
 
 export function TestCallClient({ agent }: TestCallClientProps) {
   const [callState, setCallState] = useState<CallState>('idle')
@@ -60,7 +60,19 @@ export function TestCallClient({ agent }: TestCallClientProps) {
   const [finalDuration, setFinalDuration] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
-  const roomRef = useRef<Room | null>(null)
+  // Refs so handleStart can read current values without being in its dep array
+  const callStateRef = useRef(callState)
+  const elapsedRef = useRef(elapsed)
+
+  useEffect(() => {
+    callStateRef.current = callState
+  }, [callState])
+
+  useEffect(() => {
+    elapsedRef.current = elapsed
+  }, [elapsed])
+
+  const roomRef = useRef<RoomType | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const clearTimer = useCallback(() => {
@@ -106,13 +118,16 @@ export function TestCallClient({ agent }: TestCallClientProps) {
 
       const { token, livekitUrl } = (await res.json()) as TokenResponse
 
+      // Dynamically import livekit-client to keep it out of the initial bundle
+      const { Room, RoomEvent, Track, LocalAudioTrack } = await import('livekit-client')
+
       // Connect to LiveKit room
       const room = new Room()
       roomRef.current = room
 
       room.on(RoomEvent.Disconnected, () => {
-        if (callState !== 'ended') {
-          setFinalDuration((prev) => prev || elapsed)
+        if (callStateRef.current !== 'ended') {
+          setFinalDuration((prev) => prev || elapsedRef.current)
           clearTimer()
           setCallState('ended')
         }
@@ -149,14 +164,14 @@ export function TestCallClient({ agent }: TestCallClientProps) {
       setCallState('idle')
       void disconnectRoom()
     }
-  }, [agent.id, clearTimer, disconnectRoom, callState, elapsed])
+  }, [agent.id, clearTimer, disconnectRoom])
 
   const handleEnd = useCallback(async () => {
-    setFinalDuration(elapsed)
+    setFinalDuration(elapsedRef.current)
     clearTimer()
     await disconnectRoom()
     setCallState('ended')
-  }, [elapsed, clearTimer, disconnectRoom])
+  }, [clearTimer, disconnectRoom])
 
   const handleToggleMute = useCallback(async () => {
     const room = roomRef.current
@@ -165,6 +180,7 @@ export function TestCallClient({ agent }: TestCallClientProps) {
     setMuted(newMuted)
 
     // Mute/unmute the local microphone track
+    const { Track, LocalAudioTrack } = await import('livekit-client')
     const micPub = room.localParticipant.getTrackPublication(Track.Source.Microphone)
     if (micPub?.track && micPub.track instanceof LocalAudioTrack) {
       if (newMuted) {

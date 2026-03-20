@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { UsageBar } from '@/components/billing/UsageBar'
 import { TRIAL_MINUTES } from '@/lib/billing-constants'
 
-interface UsageData {
+export interface UsageData {
   plan: {
     tier: string
     name: string
@@ -39,13 +39,23 @@ function formatDate(date: string): string {
   })
 }
 
-export function BillingSection() {
-  const [data, setData] = useState<UsageData | null>(null)
-  const [loading, setLoading] = useState(true)
+interface BillingSectionProps {
+  /** Pre-fetched billing data from the server component. When provided the
+   *  client-side fetch is skipped entirely, eliminating the post-hydration
+   *  waterfall on the Settings page. */
+  initialData?: UsageData | null
+}
+
+export function BillingSection({ initialData }: BillingSectionProps = {}) {
+  const [data, setData] = useState<UsageData | null>(initialData ?? null)
+  const [loading, setLoading] = useState(initialData === undefined)
   const [error, setError] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
 
   useEffect(() => {
+    // Skip the fetch when the server already provided data.
+    if (initialData !== undefined) return
+
     void fetch('/api/billing/usage')
       .then((r) => {
         if (!r.ok) throw new Error('Failed to load billing')
@@ -59,7 +69,7 @@ export function BillingSection() {
         setError(true)
         setLoading(false)
       })
-  }, [])
+  }, [initialData])
 
   async function handleManageBilling() {
     if (portalLoading) return

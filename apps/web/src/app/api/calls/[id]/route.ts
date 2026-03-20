@@ -12,21 +12,26 @@ export async function GET(
 
   const { id } = await params
 
-  const call = await prisma.call.findFirst({
-    where: {
-      id,
-      agent: { userId: session.user.id },
-    },
-    select: {
-      id: true,
-      transcript: true,
-      summary: true,
-    },
-  })
+  try {
+    const call = await prisma.call.findFirst({
+      where: {
+        id,
+        agent: { userId: session.user.id },
+      },
+      select: {
+        id: true,
+        transcript: true,
+        summary: true,
+      },
+    })
 
-  if (!call) {
-    return Response.json({ error: "Not found" }, { status: 404 })
+    if (!call) {
+      return Response.json({ error: "Not found" }, { status: 404 })
+    }
+
+    return Response.json({ transcript: call.transcript, summary: call.summary })
+  } catch (err) {
+    console.error("[GET /api/calls/[id]]", err)
+    return Response.json({ error: "Internal server error" }, { status: 500 })
   }
-
-  return Response.json({ transcript: call.transcript, summary: call.summary })
 }

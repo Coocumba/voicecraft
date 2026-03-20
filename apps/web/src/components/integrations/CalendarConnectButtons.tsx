@@ -1,5 +1,3 @@
-'use client'
-
 interface CalendarConnectButtonsProps {
   returnTo: string
   googleAvailable?: boolean

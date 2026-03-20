@@ -2,6 +2,7 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { prisma, AgentStatus } from '@voicecraft/db'
 import { ServiceCard } from '@/components/ui/ServiceCard'
+import { getUserTimezone, currentHourInTimezone } from '@/lib/timezone-utils'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Home' }
@@ -22,7 +23,8 @@ export default async function HomePage() {
   ])
 
   const firstName = session.user?.name?.split(' ')[0] ?? 'there'
-  const hour = new Date().getHours()
+  const tz = await getUserTimezone()
+  const hour = currentHourInTimezone(tz)
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
   const voiceAgentsStats =

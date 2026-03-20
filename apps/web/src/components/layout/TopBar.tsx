@@ -52,6 +52,7 @@ export function TopBar({ userName, userEmail, initialUnreadCount = 0 }: TopBarPr
   // provided the count via `initialUnreadCount`.
   useEffect(() => {
     const refresh = () => {
+      if (document.visibilityState === 'hidden') return
       fetch('/api/messages?countOnly=true')
         .then(res => res.json())
         .then(data => setUnreadCount((data as { needsReplyCount?: number }).needsReplyCount ?? 0))

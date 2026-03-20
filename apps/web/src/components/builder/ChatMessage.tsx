@@ -1,4 +1,7 @@
-import Markdown, { type Components } from 'react-markdown'
+import dynamic from 'next/dynamic'
+import { type Components } from 'react-markdown'
+
+const Markdown = dynamic(() => import('react-markdown').then(mod => mod.default), { ssr: false })
 
 export interface Message {
   role: 'user' | 'assistant'

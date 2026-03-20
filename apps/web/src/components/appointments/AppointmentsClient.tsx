@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { AppointmentCard } from './AppointmentCard'
 import type { AppointmentData } from './AppointmentCard'
@@ -38,28 +38,29 @@ export function AppointmentsClient({ appointments, agents, bookingAgents, hasCal
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all')
   const [drawerOpen, setDrawerOpen] = useState(false)
 
-  const now = new Date()
+  const filtered = useMemo(() => {
+    const now = new Date()
+    return appointments.filter((appt) => {
+      const scheduledDate = new Date(appt.scheduledAt)
+      const isFuture = scheduledDate > now
 
-  const filtered = appointments.filter((appt) => {
-    const scheduledDate = new Date(appt.scheduledAt)
-    const isFuture = scheduledDate > now
+      // Agent filter
+      if (selectedAgentId !== 'all' && appt.agent.id !== selectedAgentId) return false
 
-    // Agent filter
-    if (selectedAgentId !== 'all' && appt.agent.id !== selectedAgentId) return false
-
-    // Tab filter
-    switch (activeTab) {
-      case 'upcoming':
-        return appt.status === 'BOOKED' && isFuture
-      case 'past':
-        return !isFuture
-      case 'cancelled':
-        return appt.status === 'CANCELLED'
-      case 'all':
-      default:
-        return true
-    }
-  })
+      // Tab filter
+      switch (activeTab) {
+        case 'upcoming':
+          return appt.status === 'BOOKED' && isFuture
+        case 'past':
+          return !isFuture
+        case 'cancelled':
+          return appt.status === 'CANCELLED'
+        case 'all':
+        default:
+          return true
+      }
+    })
+  }, [appointments, activeTab, selectedAgentId])
 
   return (
     <div>
@@ -131,7 +132,7 @@ export function AppointmentsClient({ appointments, agents, bookingAgents, hasCal
         </div>
       )}
 
-      {bookingAgents && bookingAgents.length > 0 && (
+      {bookingAgents && bookingAgents.length > 0 && drawerOpen && (
         <NewAppointmentDrawer
           isOpen={drawerOpen}
           onClose={() => setDrawerOpen(false)}

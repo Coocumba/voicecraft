@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 import { ConversationList } from '@/components/messages/ConversationList'
 import { MessageThread } from '@/components/messages/MessageThread'
@@ -46,9 +46,13 @@ export function MessagesClient({ conversations, agents }: MessagesClientProps) {
 
   const selectedConversation = conversations.find((c) => c.id === selectedId)
 
-  const filteredConversations = agentFilter === 'all'
-    ? conversations
-    : conversations.filter((c) => c.agentId === agentFilter)
+  const filteredConversations = useMemo(
+    () =>
+      agentFilter === 'all'
+        ? conversations
+        : conversations.filter((c) => c.agentId === agentFilter),
+    [agentFilter, conversations]
+  )
 
   const handleSelect = useCallback(async (id: string) => {
     setSelectedId(id)
