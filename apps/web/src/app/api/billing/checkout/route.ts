@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { prisma } from "@voicecraft/db"
 import { PlanTier, BillingCycle } from "@voicecraft/db"
-import { stripe } from "@/lib/stripe"
+import { getStripe } from "@/lib/stripe"
 import { getPlanByTier } from "@/lib/plans"
 import { TRIAL_DAYS } from "@/lib/billing-constants"
 
@@ -41,6 +41,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    const stripe = getStripe()
     const plan = await getPlanByTier(tier as PlanTier)
     if (!plan) {
       return Response.json({ error: "Plan not found" }, { status: 404 })

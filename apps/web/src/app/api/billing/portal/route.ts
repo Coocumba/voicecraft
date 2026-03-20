@@ -1,6 +1,6 @@
 import { auth } from "@/auth"
 import { prisma } from "@voicecraft/db"
-import { stripe } from "@/lib/stripe"
+import { getStripe } from "@/lib/stripe"
 
 export async function POST() {
   const session = await auth()
@@ -9,6 +9,7 @@ export async function POST() {
   }
 
   try {
+    const stripe = getStripe()
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { stripeCustomerId: true },

@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server"
-import { stripe } from "@/lib/stripe"
+import { getStripe } from "@/lib/stripe"
 import { prisma } from "@voicecraft/db"
 import { getPlanByStripePriceId } from "@/lib/plans"
 import { pauseUserAgents, resumeUserAgents } from "@/lib/subscription"
 import type Stripe from "stripe"
 
 export async function POST(request: NextRequest) {
+  const stripe = getStripe()
   const body = await request.text()
   const signature = request.headers.get("stripe-signature")
 

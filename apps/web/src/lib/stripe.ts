@@ -1,16 +1,21 @@
 import Stripe from "stripe"
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY environment variable is not set")
-}
-
 /**
- * Stripe client singleton.
- *
- * Pinned to a specific API version so that Stripe's TypeScript types stay
- * consistent — changing the API version requires reviewing affected types.
+ * Stripe client singleton — lazy-initialized so the module can be imported
+ * at build time without STRIPE_SECRET_KEY (e.g. during `next build` in Docker).
+ * The key is only required when the client is actually used at runtime.
  */
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2026-02-25.clover",
-  typescript: true,
-})
+let _stripe: Stripe | null = null
+
+export function getStripe(): Stripe {
+  if (!_stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error("STRIPE_SECRET_KEY environment variable is not set")
+    }
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: "2026-02-25.clover",
+      typescript: true,
+    })
+  }
+  return _stripe
+}
