@@ -88,11 +88,14 @@ export async function POST(request: Request) {
       // ── First-time user: create trial subscription directly (no card required) ──
       // No Stripe Checkout — we create the subscription server-side with a trial
       // period. The user never sees a payment form until the trial ends.
+      // Only include the flat price at subscription creation.
+      // Overage is tracked locally and billed via Stripe Billing Meters / invoice
+      // items — mixing a yearly flat price with a monthly metered price in a single
+      // subscription is not supported by Stripe.
       const subscription = await stripe.subscriptions.create({
         customer: stripeCustomerId,
         items: [
           { price: flatPriceId },
-          { price: overagePriceId },
         ],
         trial_period_days: TRIAL_DAYS,
         payment_behavior: "default_incomplete",
@@ -165,7 +168,6 @@ export async function POST(request: Request) {
       customer: stripeCustomerId,
       line_items: [
         { price: flatPriceId, quantity: 1 },
-        { price: overagePriceId },
       ],
       subscription_data: {
         metadata: {
