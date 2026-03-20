@@ -4,8 +4,8 @@ All tools are defined as standalone async functions decorated with
 @function_tool so they can be passed to Agent(tools=[...]) without coupling
 them to a specific agent class. Each tool:
 
-  - Uses a single shared httpx.AsyncClient (created per-call; connection
-    pooling is handled by httpx internally for short-lived calls).
+  - Uses the process-wide shared httpx.AsyncClient from http_client.py so
+    TCP connections to the Next.js API are pooled across concurrent calls.
   - Passes x-api-key for authentication.
   - Returns a plain string that the LLM can incorporate into its spoken reply.
   - Never raises — errors are caught and returned as user-friendly messages so
@@ -21,6 +21,8 @@ import httpx
 import structlog
 from livekit import api
 from livekit.agents import function_tool, get_job_context, RunContext
+
+from src.agent.http_client import get_http_client
 
 logger = structlog.get_logger(__name__)
 
@@ -80,8 +82,9 @@ async def _post(path: str, payload: dict[str, Any], log_context: dict[str, Any])
     log = logger.bind(url=url, **log_context)
 
     try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            response = await client.post(url, json=payload, headers=_COMMON_HEADERS)
+        response = await get_http_client().post(
+            url, json=payload, headers=_COMMON_HEADERS, timeout=_TIMEOUT
+        )
 
         if response.status_code not in (200, 201):
             log.error(

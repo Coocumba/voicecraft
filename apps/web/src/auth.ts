@@ -1,3 +1,4 @@
+import { cache } from "react"
 import NextAuth, { CredentialsSignin } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import Google from "next-auth/providers/google"
@@ -137,3 +138,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
 })
+
+/**
+ * Per-request cached session getter for Server Components.
+ *
+ * React's `cache()` deduplicates calls within a single request render pass,
+ * so multiple Server Components (e.g. ShellLayout and a page) that both need
+ * the session will share the same Promise rather than hitting NextAuth twice.
+ *
+ * Do NOT use this as the middleware export — keep using `auth` directly there.
+ */
+export const getSession = cache(auth)

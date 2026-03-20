@@ -57,52 +57,72 @@ export async function POST(request: Request) {
     },
   })
 
-  let sent = 0
+  const dateFormatter = new Intl.DateTimeFormat("en-US", {
+    weekday: "long", month: "long", day: "numeric",
+  })
+  const timeFormatter = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric", minute: "2-digit", hour12: true,
+  })
+
+  // Send all reminders in parallel and collect outcomes.
+  const results = await Promise.allSettled(
+    appointments
+      .filter((appt) => appt.patientPhone && appt.agent.phoneNumber)
+      .map((appt) =>
+        sendWhatsAppTemplate(
+          appt.patientPhone!,
+          appt.agent.phoneNumber!,
+          reminderSid,
+          [
+            appt.patientName,                           // {{1}} customer name
+            appt.service,                               // {{2}} service
+            appt.agent.businessName,                    // {{3}} business name
+            dateFormatter.format(appt.scheduledAt),     // {{4}} date (e.g. "Monday, April 7")
+            timeFormatter.format(appt.scheduledAt),     // {{5}} time (e.g. "2:00 PM")
+          ]
+        ).then(() => ({ apptId: appt.id, ok: true as const }))
+         .catch((err: unknown) => ({ apptId: appt.id, ok: false as const, err }))
+      )
+  )
+
+  // Partition outcomes.
+  const successIds: string[] = []
+  const noWhatsAppIds: string[] = []
   let failed = 0
 
-  for (const appt of appointments) {
-    if (!appt.patientPhone || !appt.agent.phoneNumber) continue
+  for (const result of results) {
+    // Promise.allSettled only rejects if the mapper itself throws synchronously,
+    // which can't happen here — the inner .catch() converts all rejections.
+    if (result.status === "rejected") continue
 
-    try {
-      const dateFormatter = new Intl.DateTimeFormat("en-US", {
-        weekday: "long", month: "long", day: "numeric",
-      })
-      const timeFormatter = new Intl.DateTimeFormat("en-US", {
-        hour: "numeric", minute: "2-digit", hour12: true,
-      })
-
-      await sendWhatsAppTemplate(
-        appt.patientPhone,
-        appt.agent.phoneNumber,
-        reminderSid,
-        [
-          appt.patientName,                           // {{1}} customer name
-          appt.service,                               // {{2}} service
-          appt.agent.businessName,                    // {{3}} business name
-          dateFormatter.format(appt.scheduledAt),     // {{4}} date (e.g. "Monday, April 7")
-          timeFormatter.format(appt.scheduledAt),     // {{5}} time (e.g. "2:00 PM")
-        ]
-      )
-
-      await prisma.appointment.update({
-        where: { id: appt.id },
-        data: { reminderSent: true },
-      })
-
-      sent++
-    } catch (err: unknown) {
+    const { apptId, ok } = result.value
+    if (ok) {
+      successIds.push(apptId)
+    } else {
       failed++
+      const { err } = result.value as { apptId: string; ok: false; err: unknown }
       const msg = err instanceof Error ? err.message : String(err)
       if (msg.includes("63016")) {
-        console.info("[cron/reminders] Patient not on WhatsApp, marking sent to stop retries", { apptId: appt.id })
-        await prisma.appointment.update({ where: { id: appt.id }, data: { reminderSent: true } })
+        // Patient not on WhatsApp — mark sent to suppress future retries.
+        console.info("[cron/reminders] Patient not on WhatsApp, marking sent to stop retries", { apptId })
+        noWhatsAppIds.push(apptId)
       } else {
-        console.error("[cron/reminders] Failed to send reminder", { apptId: appt.id, err })
-        // Leave reminderSent = false so next hourly run retries
+        console.error("[cron/reminders] Failed to send reminder", { apptId, err })
+        // Leave reminderSent = false so next hourly run retries.
       }
     }
   }
 
+  // Batch-update all IDs that should be marked as sent (successes + no-WhatsApp).
+  const markSentIds = [...successIds, ...noWhatsAppIds]
+  if (markSentIds.length > 0) {
+    await prisma.appointment.updateMany({
+      where: { id: { in: markSentIds } },
+      data: { reminderSent: true },
+    })
+  }
+
+  const sent = successIds.length
   console.info("[cron/reminders] Done", { total: appointments.length, sent, failed })
   return Response.json({ total: appointments.length, sent, failed })
 }

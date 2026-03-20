@@ -24,7 +24,14 @@ export default async function CallsPage() {
   const [calls, agents, todayCount, weekCount, totalCount] = await Promise.all([
     prisma.call.findMany({
       where: { agent: { userId } },
-      include: {
+      select: {
+        id: true,
+        callerNumber: true,
+        duration: true,
+        outcome: true,
+        createdAt: true,
+        // transcript and summary are excluded — they can be heavy Text fields
+        // and are not needed for the initial list render.
         agent: { select: { id: true, name: true, businessName: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -74,8 +81,11 @@ export default async function CallsPage() {
       callerNumber: call.callerNumber,
       duration: call.duration,
       outcome: call.outcome as CallCardData['outcome'],
-      transcript: call.transcript,
-      summary: call.summary,
+      // transcript and summary are not fetched on the list page to avoid
+      // transferring large Text fields. Set to null — the expand button
+      // in CallCard is hidden when both are null.
+      transcript: null,
+      summary: null,
       createdAt: call.createdAt.toISOString(),
       contactName: contact?.name ?? null,
       isReturningCaller: (contact?.callCount ?? 0) > 1,

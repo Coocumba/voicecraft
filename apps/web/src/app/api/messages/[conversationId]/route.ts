@@ -33,6 +33,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
         },
         messages: {
           orderBy: { createdAt: "asc" },
+          take: 50,
         },
       },
     })

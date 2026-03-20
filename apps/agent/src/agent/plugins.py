@@ -7,6 +7,19 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
+# Deepgram endpointing tuning for phone conversations.
+#
+# _STT_ENDPOINTING_MS: silence duration (ms) after speech before Deepgram emits
+# a final transcript. 300 ms is aggressive but appropriate for phone calls where
+# callers expect a quick response — the default (500 ms) adds noticeable lag
+# between the caller finishing a sentence and the LLM firing.
+#
+# _STT_UTTERANCE_END_MS: maximum silence (ms) allowed within a single utterance
+# before it is split. 1000 ms prevents the agent from interrupting mid-sentence
+# while still bounding how long it waits for a trailing word.
+_STT_ENDPOINTING_MS = 300
+_STT_UTTERANCE_END_MS = 1000
+
 
 def create_stt(language: str | None = None):
     """Return a Deepgram Nova-3 STT plugin instance.
@@ -23,10 +36,19 @@ def create_stt(language: str | None = None):
     lang = (language or "en").lower().strip()
     if lang in ("en", "english"):
         logger.info("stt_created", language="en", mode="default")
-        return deepgram.STT(model="nova-3")
+        return deepgram.STT(
+            model="nova-3",
+            endpointing_ms=_STT_ENDPOINTING_MS,
+            utterance_end_ms=_STT_UTTERANCE_END_MS,
+        )
 
     logger.info("stt_created", language=lang, mode="language-specific")
-    return deepgram.STT(model="nova-3", language=lang)
+    return deepgram.STT(
+        model="nova-3",
+        language=lang,
+        endpointing_ms=_STT_ENDPOINTING_MS,
+        utterance_end_ms=_STT_UTTERANCE_END_MS,
+    )
 
 
 def create_llm(system_prompt: str):

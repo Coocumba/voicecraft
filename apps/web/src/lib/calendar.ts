@@ -24,13 +24,6 @@ export async function getConnectedProvider(userId: string): Promise<CalendarProv
   return integration.provider === IntegrationProvider.GOOGLE_CALENDAR ? "google" : "microsoft"
 }
 
-export async function hasCalendarIntegration(userId: string): Promise<boolean> {
-  const count = await prisma.integration.count({
-    where: { userId, provider: { in: CALENDAR_PROVIDERS } },
-  })
-  return count > 0
-}
-
 export async function getCalendarEventsForDate(
   userId: string,
   date: string,

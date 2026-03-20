@@ -39,6 +39,10 @@ def _sanitize_text(value: str, max_len: int = _MAX_FIELD_LEN) -> str:
     return cleaned[:max_len]
 
 
+# Canonical day order used when serialising hours dicts into the system prompt.
+# Defined at module level so it is not recreated on every call to build_system_prompt.
+_DAY_ORDER = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
 _DEFAULT_BUSINESS_NAME = "our dental clinic"
 _DEFAULT_SERVICES = "general dentistry, cleanings, fillings, crowns, and extractions"
 _DEFAULT_HOURS = "Monday through Friday, 8 AM to 6 PM, and Saturday 9 AM to 2 PM"
@@ -146,9 +150,6 @@ def build_system_prompt(config: dict[str, Any] | None, caller_number: str | None
         services = raw_services.strip()
     else:
         services = _DEFAULT_SERVICES
-
-    # Issue #13: ensure hours are output in consistent day-of-week order
-    _DAY_ORDER = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
     raw_hours = config.get("hours")
     if isinstance(raw_hours, dict):

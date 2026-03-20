@@ -71,7 +71,17 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
     prisma.agent.findUnique({
       where: { id },
       include: {
-        calls: { orderBy: { createdAt: 'desc' }, take: 20 },
+        calls: {
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+          select: {
+            id: true,
+            createdAt: true,
+            callerNumber: true,
+            duration: true,
+            outcome: true,
+          },
+        },
         _count: { select: { calls: true, appointments: true } },
       },
     }),

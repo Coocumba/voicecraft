@@ -151,42 +151,47 @@ export async function POST(request: Request) {
     // the call record from being returned to the agent worker.
     if (typeof duration === "number" && duration > 0) {
       try {
-        const usageRecord = await getCurrentUsageRecord(agent.userId)
-        if (usageRecord) {
-          const prevMinutes = usageRecord.minutesUsed
-          const updated = await incrementUsage(
-            usageRecord.subscriptionId,
-            usageRecord.periodStart,
-            duration
-          )
+        // Fetch subscription once — reuse its id for the usage record lookup and
+        // its status for the trial exhaustion check, avoiding two separate queries.
+        const subscription = await prisma.subscription.findUnique({
+          where: { userId: agent.userId },
+          select: { id: true, status: true },
+        })
 
-          if (updated) {
-            // If the user is on a trial and has exhausted their free minutes,
-            // pause all their agents immediately (hard limit).
-            const subscription = await prisma.subscription.findUnique({
-              where: { userId: agent.userId },
-              select: { status: true },
-            })
-            if (subscription?.status === "TRIALING" && isTrialMinutesExhausted(updated.minutesUsed)) {
-              await pauseUserAgents(agent.userId)
-              console.warn("[POST /api/calls] Trial minutes exhausted — agents paused", {
-                userId: agent.userId,
-                minutesUsed: updated.minutesUsed,
-              })
-            } else {
-              const crossed = checkThresholdCrossed(
-                prevMinutes,
-                updated.minutesUsed,
-                updated.minutesIncluded
-              )
-              if (crossed) {
-                // TODO: Send threshold alert email via Resend
-                console.info("[POST /api/calls] Usage threshold crossed", {
+        if (subscription) {
+          const usageRecord = await getCurrentUsageRecord(agent.userId, subscription.id)
+          if (usageRecord) {
+            const prevMinutes = usageRecord.minutesUsed
+            const updated = await incrementUsage(
+              usageRecord.subscriptionId,
+              usageRecord.periodStart,
+              duration
+            )
+
+            if (updated) {
+              // If the user is on a trial and has exhausted their free minutes,
+              // pause all their agents immediately (hard limit).
+              if (subscription.status === "TRIALING" && isTrialMinutesExhausted(updated.minutesUsed)) {
+                await pauseUserAgents(agent.userId)
+                console.warn("[POST /api/calls] Trial minutes exhausted — agents paused", {
                   userId: agent.userId,
-                  threshold: crossed.label,
                   minutesUsed: updated.minutesUsed,
-                  minutesIncluded: updated.minutesIncluded,
                 })
+              } else {
+                const crossed = checkThresholdCrossed(
+                  prevMinutes,
+                  updated.minutesUsed,
+                  updated.minutesIncluded
+                )
+                if (crossed) {
+                  // TODO: Send threshold alert email via Resend
+                  console.info("[POST /api/calls] Usage threshold crossed", {
+                    userId: agent.userId,
+                    threshold: crossed.label,
+                    minutesUsed: updated.minutesUsed,
+                    minutesIncluded: updated.minutesIncluded,
+                  })
+                }
               }
             }
           }

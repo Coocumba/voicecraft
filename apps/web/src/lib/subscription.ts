@@ -8,17 +8,30 @@ export async function getUserSubscription(userId: string) {
   })
 }
 
-/** Get the current billing period's usage record for a user. */
-export async function getCurrentUsageRecord(userId: string) {
-  const subscription = await prisma.subscription.findUnique({
-    where: { userId },
-  })
-  if (!subscription) return null
+/** Get the current billing period's usage record for a user.
+ *
+ * Pass `subscriptionId` when the caller already holds the subscription to
+ * skip the inner subscription lookup entirely (saves one round-trip).
+ */
+export async function getCurrentUsageRecord(
+  userId: string,
+  subscriptionId?: string
+) {
+  // Resolve subscriptionId only when the caller hasn't provided one.
+  let resolvedSubscriptionId = subscriptionId
+  if (!resolvedSubscriptionId) {
+    const subscription = await prisma.subscription.findUnique({
+      where: { userId },
+      select: { id: true },
+    })
+    if (!subscription) return null
+    resolvedSubscriptionId = subscription.id
+  }
 
   const now = new Date()
   return prisma.usageRecord.findFirst({
     where: {
-      subscriptionId: subscription.id,
+      subscriptionId: resolvedSubscriptionId,
       periodStart: { lte: now },
       periodEnd: { gte: now },
     },

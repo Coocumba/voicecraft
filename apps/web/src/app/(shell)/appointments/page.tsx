@@ -14,11 +14,12 @@ export default async function AppointmentsPage() {
 
   const userId = session.user.id
 
-  // Fetch all agents belonging to this user (for the filter dropdown)
-  const [agents, hasCalendarIntegration, allUserAgents] = await Promise.all([
+  // Single agent query with the superset of fields needed by both the filter
+  // dropdown (id, name) and the booking-agents list (config).
+  const [allUserAgents, hasCalendarIntegration] = await Promise.all([
     prisma.agent.findMany({
       where: { userId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, config: true },
       orderBy: { name: 'asc' },
     }),
     prisma.integration.findFirst({
@@ -28,11 +29,10 @@ export default async function AppointmentsPage() {
       },
       select: { id: true },
     }).then(Boolean),
-    prisma.agent.findMany({
-      where: { userId },
-      select: { id: true, name: true, config: true },
-    }),
   ])
+
+  // Derive the dropdown list from the same result set.
+  const agents = allUserAgents.map((a) => ({ id: a.id, name: a.name }))
 
   const bookingAgentsWithServices = allUserAgents
     .filter((a) => {
@@ -56,6 +56,7 @@ export default async function AppointmentsPage() {
     prisma.appointment.findMany({
       where: { agentId: { in: agentIds } },
       orderBy: { scheduledAt: 'desc' },
+      take: 100,
       include: {
         agent: { select: { id: true, name: true, businessName: true } },
       },

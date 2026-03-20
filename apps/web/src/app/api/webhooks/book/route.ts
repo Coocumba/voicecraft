@@ -6,7 +6,7 @@
 // calendar event and stores the event ID on the appointment record.
 
 import { prisma } from "@voicecraft/db"
-import { bookAppointment, hasCalendarIntegration } from "@/lib/calendar"
+import { bookAppointment, getConnectedProvider } from "@/lib/calendar"
 import { withCors, preflightResponse } from "@/lib/cors"
 
 export function OPTIONS(): Response {
@@ -78,11 +78,13 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     // Attempt to create a calendar event if the user has a live integration.
+    // getConnectedProvider returns null when no calendar is connected — one
+    // query instead of the COUNT previously used by hasCalendarIntegration.
     let calendarEventId: string | undefined
     try {
-      const hasCalendar = await hasCalendarIntegration(agent.userId)
+      const calendarProvider = await getConnectedProvider(agent.userId)
 
-      if (hasCalendar) {
+      if (calendarProvider !== null) {
         const result = await bookAppointment(agent.userId, {
           patientName: patientName.trim(),
           patientPhone: typeof patientPhone === "string" ? patientPhone.trim() : undefined,

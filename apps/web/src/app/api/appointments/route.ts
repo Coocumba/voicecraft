@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { prisma, AppointmentStatus } from "@voicecraft/db"
 import type { Prisma } from "@voicecraft/db"
-import { bookAppointment, hasCalendarIntegration } from "@/lib/calendar"
+import { bookAppointment, getConnectedProvider } from "@/lib/calendar"
 import type { AgentConfig } from "@/lib/builder-types"
 
 const MAX_LIMIT = 100
@@ -214,11 +214,12 @@ export async function POST(request: Request) {
       },
     })
 
-    // Try calendar sync (non-fatal)
+    // Try calendar sync (non-fatal). getConnectedProvider returns null when no
+    // calendar is connected — replaces the COUNT query from hasCalendarIntegration.
     try {
-      const hasCalendar = await hasCalendarIntegration(session.user.id)
+      const calendarProvider = await getConnectedProvider(session.user.id)
 
-      if (hasCalendar) {
+      if (calendarProvider !== null) {
         const result = await bookAppointment(session.user.id, {
           patientName,
           patientPhone: patientPhone || undefined,

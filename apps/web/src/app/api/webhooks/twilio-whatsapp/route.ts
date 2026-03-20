@@ -104,22 +104,24 @@ export async function POST(request: Request) {
     return twimlResponse()
   }
 
-  // Update status and timestamp now that we know the customer is not opted out
-  await prisma.conversation.update({
-    where: { id: conversation.id },
-    data: { lastMessageAt: new Date(), status: MessagingStatus.ACTIVE },
-  })
-
+  // Update status and timestamp now that we know the customer is not opted out.
   // ── 7. Save inbound message ──────────────────────────────────────────────
-  await prisma.message.create({
-    data: {
-      conversationId: conversation.id,
-      direction: MessageDirection.INBOUND,
-      sender: MessageSender.CUSTOMER,
-      body: body || "(media message)",
-      twilioSid,
-    },
-  })
+  // Both writes are independent — run them in parallel.
+  await Promise.all([
+    prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { lastMessageAt: new Date(), status: MessagingStatus.ACTIVE },
+    }),
+    prisma.message.create({
+      data: {
+        conversationId: conversation.id,
+        direction: MessageDirection.INBOUND,
+        sender: MessageSender.CUSTOMER,
+        body: body || "(media message)",
+        twilioSid,
+      },
+    }),
+  ])
 
   // ── 8. Handle media-only messages ────────────────────────────────────────
   if (!body) {

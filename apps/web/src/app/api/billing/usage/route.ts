@@ -9,10 +9,12 @@ export async function GET() {
   }
 
   try {
-    const [subscription, usageRecord] = await Promise.all([
-      getUserSubscription(session.user.id),
-      getCurrentUsageRecord(session.user.id),
-    ])
+    // Fetch subscription first, then pass its id to getCurrentUsageRecord so the
+    // latter skips its own redundant subscription lookup.
+    const subscription = await getUserSubscription(session.user.id)
+    const usageRecord = subscription
+      ? await getCurrentUsageRecord(session.user.id, subscription.id)
+      : null
 
     if (!subscription) {
       return Response.json({ error: "No active subscription found" }, { status: 404 })

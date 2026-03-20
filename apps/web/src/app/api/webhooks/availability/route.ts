@@ -7,7 +7,7 @@
 // Respects the agent's configured timezone, business hours, and service duration.
 
 import { prisma } from "@voicecraft/db"
-import { getCalendarEventsForDate, hasCalendarIntegration } from "@/lib/calendar"
+import { getCalendarEventsForDate, getConnectedProvider } from "@/lib/calendar"
 import { withCors, preflightResponse } from "@/lib/cors"
 import { getDayName, isValidTimezone } from "@/lib/timezone-utils"
 import { generateSlots } from "@/lib/slot-generator"
@@ -145,13 +145,14 @@ export async function POST(request: Request): Promise<Response> {
   // Generate candidate slots
   const allSlots = generateSlots(dateStr, open, close, durationMinutes, timezone)
 
-  // Check for calendar integration
-  const hasCalendar = await hasCalendarIntegration(agent.userId)
+  // Resolve the connected calendar provider (null when none is connected).
+  // A single findFirst replaces the COUNT query previously used by hasCalendarIntegration.
+  const calendarProvider = await getConnectedProvider(agent.userId)
 
   let availableSlots: string[]
   let source: "calendar" | "mock"
 
-  if (hasCalendar) {
+  if (calendarProvider !== null) {
     try {
       const events = await getCalendarEventsForDate(agent.userId, dateStr, timezone)
       // Filter out slots that overlap with any calendar event

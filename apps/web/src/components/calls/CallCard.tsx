@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { formatDuration } from '@/lib/date-utils'
 import { LocalTime } from '@/components/ui/LocalTime'
@@ -22,6 +22,11 @@ export interface CallCardData {
     name: string
     businessName: string
   }
+}
+
+interface CallDetails {
+  transcript: string | null
+  summary: string | null
 }
 
 interface CallCardProps {
@@ -66,7 +71,44 @@ function OutcomeDot({ outcome }: { outcome: CallOutcomeValue }) {
 
 export function CallCard({ call }: CallCardProps) {
   const [expanded, setExpanded] = useState(false)
-  const hasDetails = Boolean(call.transcript || call.summary)
+  const [details, setDetails] = useState<CallDetails | null>(
+    call.transcript || call.summary
+      ? { transcript: call.transcript, summary: call.summary }
+      : null
+  )
+  const [loading, setLoading] = useState(false)
+
+  const handleToggle = useCallback(async () => {
+    if (expanded) {
+      setExpanded(false)
+      return
+    }
+
+    // If details were not loaded yet (e.g. list page omits them), fetch on demand
+    if (!details) {
+      setLoading(true)
+      try {
+        const res = await fetch(`/api/calls/${call.id}`)
+        if (res.ok) {
+          const data: CallDetails = await res.json()
+          if (data.transcript || data.summary) {
+            setDetails(data)
+          } else {
+            // No details available for this call
+            setDetails({ transcript: null, summary: null })
+          }
+        }
+      } catch {
+        // Silently fail — the button just won't expand
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    setExpanded(true)
+  }, [expanded, details, call.id])
+
+  const hasVisibleDetails = details?.transcript || details?.summary
 
   return (
     <article className="bg-white rounded-xl border border-border p-5 transition-shadow hover:shadow-sm">
@@ -110,50 +152,53 @@ export function CallCard({ call }: CallCardProps) {
         </div>
       </div>
 
-      {/* Expandable details trigger */}
-      {hasDetails && (
-        <div className="mt-3 pt-3 border-t border-border">
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="text-xs text-accent hover:text-accent/80 transition-colors flex items-center gap-1"
-            aria-expanded={expanded}
+      {/* Expandable details trigger — always shown so details can be lazy-loaded */}
+      <div className="mt-3 pt-3 border-t border-border">
+        <button
+          onClick={handleToggle}
+          disabled={loading}
+          className="text-xs text-accent hover:text-accent/80 transition-colors flex items-center gap-1 disabled:opacity-50"
+          aria-expanded={expanded}
+        >
+          <span
+            className={cn(
+              'inline-block transition-transform duration-150',
+              expanded ? 'rotate-90' : 'rotate-0'
+            )}
+            aria-hidden="true"
           >
-            <span
-              className={cn(
-                'inline-block transition-transform duration-150',
-                expanded ? 'rotate-90' : 'rotate-0'
-              )}
-              aria-hidden="true"
-            >
-              ▸
-            </span>
-            {expanded ? 'Hide details' : 'View details'}
-          </button>
+            ▸
+          </span>
+          {loading ? 'Loading…' : expanded ? 'Hide details' : 'View details'}
+        </button>
 
-          {expanded && (
-            <div className="mt-3 space-y-3">
-              {call.summary && (
-                <div>
-                  <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-1">
-                    Summary
-                  </p>
-                  <p className="text-sm text-ink leading-relaxed">{call.summary}</p>
-                </div>
-              )}
-              {call.transcript && (
-                <div>
-                  <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-1">
-                    Transcript
-                  </p>
-                  <pre className="text-xs text-muted font-sans whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto bg-cream rounded-lg p-3">
-                    {call.transcript}
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+        {expanded && hasVisibleDetails && (
+          <div className="mt-3 space-y-3">
+            {details?.summary && (
+              <div>
+                <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-1">
+                  Summary
+                </p>
+                <p className="text-sm text-ink leading-relaxed">{details.summary}</p>
+              </div>
+            )}
+            {details?.transcript && (
+              <div>
+                <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-1">
+                  Transcript
+                </p>
+                <pre className="text-xs text-muted font-sans whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto bg-cream rounded-lg p-3">
+                  {details.transcript}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+
+        {expanded && !hasVisibleDetails && !loading && (
+          <p className="mt-3 text-xs text-muted">No transcript or summary available for this call.</p>
+        )}
+      </div>
     </article>
   )
 }

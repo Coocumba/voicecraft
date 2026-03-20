@@ -6,6 +6,8 @@ from typing import Any
 import httpx
 import structlog
 
+from src.agent.http_client import get_http_client
+
 logger = structlog.get_logger(__name__)
 
 _WEB_URL = os.environ.get("VOICECRAFT_WEB_URL", "http://localhost:3000")
@@ -33,11 +35,11 @@ async def load_agent_config(agent_id: str) -> dict[str, Any] | None:
     log = logger.bind(agent_id=agent_id, url=url)
 
     try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            response = await client.get(
-                url,
-                headers={"x-api-key": _API_KEY},
-            )
+        response = await get_http_client().get(
+            url,
+            headers={"x-api-key": _API_KEY},
+            timeout=_TIMEOUT,
+        )
 
         if response.status_code == 404:
             log.warning("agent_config_not_found")

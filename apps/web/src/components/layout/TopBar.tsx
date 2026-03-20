@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils'
 interface TopBarProps {
   userName?: string | null
   userEmail?: string | null
+  /** Unread message count pre-fetched by the server on initial render. */
+  initialUnreadCount?: number
 }
 
 const services = [
@@ -39,17 +41,25 @@ function CloseIcon() {
   )
 }
 
-export function TopBar({ userName, userEmail }: TopBarProps) {
+export function TopBar({ userName, userEmail, initialUnreadCount = 0 }: TopBarProps) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
+  const [unreadCount, setUnreadCount] = useState(initialUnreadCount)
 
+  // Keep the badge fresh with a background poll every 60 s.
+  // We deliberately skip the initial fetch because the server already
+  // provided the count via `initialUnreadCount`.
   useEffect(() => {
-    fetch('/api/messages?countOnly=true')
-      .then(res => res.json())
-      .then(data => setUnreadCount((data as { needsReplyCount?: number }).needsReplyCount ?? 0))
-      .catch(() => {})
+    const refresh = () => {
+      fetch('/api/messages?countOnly=true')
+        .then(res => res.json())
+        .then(data => setUnreadCount((data as { needsReplyCount?: number }).needsReplyCount ?? 0))
+        .catch(() => {})
+    }
+
+    const intervalId = setInterval(refresh, 60_000)
+    return () => clearInterval(intervalId)
   }, [])
 
   function isServiceActive(href: string) {

@@ -19,6 +19,14 @@ Architecture
 - Plugins (STT/LLM/TTS) are constructed per session so each call gets a fresh
   plugin state; this is cheap and avoids shared-state bugs across concurrent
   calls.
+
+HTTP client
+-----------
+A module-level shared httpx.AsyncClient is used for all outbound requests so
+connection pooling is effective across concurrent sessions. Per-request timeout
+values are passed at the call site rather than baked into the client, preserving
+the per-operation timeout semantics without creating a new connection pool on
+every request.
 """
 
 from __future__ import annotations
@@ -35,6 +43,7 @@ from livekit import agents
 from livekit.agents import AgentServer, AgentSession, Agent, JobContext, cli
 
 from src.agent.config_loader import load_agent_config
+from src.agent.http_client import get_http_client
 from src.agent.plugins import create_stt, create_llm, create_tts
 from src.agent.prompts import build_caller_context_suffix, build_system_prompt, get_greeting
 from src.agent.tools import book_appointment, check_availability, end_call, send_sms
@@ -135,12 +144,12 @@ async def _log_call(
 
         logger.debug("call_log_posting", agent_id=agent_id, url=f"{_WEB_URL}/api/calls",
                      has_api_key=bool(_API_KEY))
-        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
-            resp = await client.post(
-                f"{_WEB_URL}/api/calls",
-                json=payload,
-                headers={"x-api-key": _API_KEY, "Content-Type": "application/json"},
-            )
+        resp = await get_http_client().post(
+            f"{_WEB_URL}/api/calls",
+            json=payload,
+            headers={"x-api-key": _API_KEY, "Content-Type": "application/json"},
+            timeout=httpx.Timeout(10.0),
+        )
         if resp.status_code in (200, 201):
             logger.info("call_logged", agent_id=agent_id, duration=duration_secs, outcome=outcome)
         else:
@@ -207,12 +216,12 @@ async def _lookup_contact(agent_id: str, phone: str) -> tuple[dict[str, Any] | N
     """
     empty_appts: dict[str, Any] = {"upcoming": [], "past": []}
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(3.0)) as client:
-            resp = await client.post(
-                f"{_WEB_URL}/api/webhooks/contact-lookup",
-                json={"agentId": agent_id, "phone": phone},
-                headers={"x-api-key": _API_KEY, "Content-Type": "application/json"},
-            )
+        resp = await get_http_client().post(
+            f"{_WEB_URL}/api/webhooks/contact-lookup",
+            json={"agentId": agent_id, "phone": phone},
+            headers={"x-api-key": _API_KEY, "Content-Type": "application/json"},
+            timeout=httpx.Timeout(3.0),
+        )
         if resp.status_code == 200:
             data: dict[str, Any] = resp.json()
             if data.get("found"):
@@ -220,6 +229,9 @@ async def _lookup_contact(agent_id: str, phone: str) -> tuple[dict[str, Any] | N
                 contact = data.get("contact")
                 appointments = data.get("appointments", empty_appts)
                 return contact, appointments
+            # 200 but found=False — caller is not in the system.
+            logger.debug("contact_not_found", agent_id=agent_id)
+            return None, empty_appts
         else:
             # Issue #5: log API errors explicitly instead of treating them as "not found"
             logger.warning(
@@ -232,9 +244,6 @@ async def _lookup_contact(agent_id: str, phone: str) -> tuple[dict[str, Any] | N
     except Exception as exc:
         logger.warning("contact_lookup_failed", error=str(exc))
         return None, empty_appts
-
-    logger.debug("contact_not_found", agent_id=agent_id)
-    return None, empty_appts
 
 
 server = AgentServer()
@@ -255,18 +264,7 @@ async def entrypoint(ctx: JobContext) -> None:
     log = logger.bind(room=ctx.room.name)
     log.info("session_started")
 
-    # -- Load per-agent config --------------------------------------------------
-    agent_id = _extract_agent_id(ctx)
-    config = await load_agent_config(agent_id) if agent_id else None
-
-    if config is None:
-        log.warning(
-            "agent_config_unavailable",
-            agent_id=agent_id,
-            detail="falling back to default dental receptionist config",
-        )
-
-    # -- Identify caller early so we can personalise the session ----------------
+    # -- Identify caller early so both startup coroutines can run in parallel ---
     # Extract caller number from SIP participant attributes before any prompt
     # construction so it's available for both contact lookup and call logging.
     caller_number: str | None = None
@@ -276,12 +274,30 @@ async def entrypoint(ctx: JobContext) -> None:
             caller_number = phone
             break
 
-    # Contact lookup: fire-and-forget — None on any miss or failure.
-    # Only attempted when both agent_id and caller_number are known.
+    # -- Load per-agent config and look up the contact in parallel -------------
+    # Both calls hit the Next.js API independently; running them concurrently
+    # saves the full round-trip latency of whichever finishes second (typically
+    # ~50–150 ms), which matters at call-pickup time.
+    agent_id = _extract_agent_id(ctx)
+
     contact: dict[str, Any] | None = None
     appointments: dict[str, Any] = {"upcoming": [], "past": []}
+
     if agent_id and caller_number:
-        contact, appointments = await _lookup_contact(agent_id, caller_number)
+        config, (contact, appointments) = await asyncio.gather(
+            load_agent_config(agent_id),
+            _lookup_contact(agent_id, caller_number),
+        )
+    else:
+        # Contact lookup skipped — missing agent_id or caller_number.
+        config = await load_agent_config(agent_id) if agent_id else None
+
+    if config is None:
+        log.warning(
+            "agent_config_unavailable",
+            agent_id=agent_id,
+            detail="falling back to default dental receptionist config",
+        )
 
     # -- Build session components -----------------------------------------------
     system_prompt = build_system_prompt(config, caller_number=caller_number)
@@ -364,11 +380,14 @@ async def entrypoint(ctx: JobContext) -> None:
     # LLM exactly what to say first rather than waiting for the caller to speak.
     await session.generate_reply(instructions=greeting)
 
-    # Wait for the session to finish (framework keeps this alive until close)
+    # Wait for the session to finish (framework keeps this alive until close).
     # Then ensure call logging completes before the entrypoint returns.
-    # The await below is a safety net — if the session closes and the event loop
-    # is still running, we wait for logging to finish.
-    await log_done.wait()
+    # The timeout prevents the entrypoint from hanging indefinitely if the
+    # Next.js /api/calls endpoint is slow or unreachable during teardown.
+    try:
+        await asyncio.wait_for(log_done.wait(), timeout=5.0)
+    except asyncio.TimeoutError:
+        log.warning("call_log_timeout", detail="call log did not complete within 5 s; proceeding with teardown")
 
 
 if __name__ == "__main__":

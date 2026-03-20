@@ -54,7 +54,9 @@ model Agent {
   updatedAt                DateTime             @updatedAt
 
   @@index([userId])
+  @@index([userId, status])
   @@index([conversationId])
+  @@index([phoneNumber])
 }
 
 model Call {
@@ -69,7 +71,7 @@ model Call {
   appointments Appointment[]
   createdAt    DateTime      @default(now())
 
-  @@index([agentId])
+  @@index([agentId, createdAt])
 }
 
 model Appointment {
@@ -87,7 +89,8 @@ model Appointment {
   reminderSent    Boolean           @default(false)
   createdAt       DateTime          @default(now())
 
-  @@index([agentId])
+  @@index([agentId, scheduledAt])
+  @@index([agentId, patientPhone])
   @@index([callId])
   @@index([scheduledAt, status, reminderSent])
 }
