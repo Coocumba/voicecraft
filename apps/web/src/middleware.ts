@@ -16,6 +16,14 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/verify-email", req.nextUrl))
   }
 
+  // Subscription check — exempt choose-plan page to avoid redirect loop.
+  // Also exempt the seeded demo user for local development.
+  const isChoosePlan = pathname.startsWith("/dashboard/choose-plan")
+  const isDemoUser = session.user.email === "admin@voicecraft.dev"
+  if (!isChoosePlan && !isDemoUser && !session.user.subscriptionStatus) {
+    return NextResponse.redirect(new URL("/dashboard/choose-plan", req.nextUrl))
+  }
+
   return NextResponse.next()
 })
 

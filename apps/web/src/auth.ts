@@ -7,6 +7,19 @@ import { prisma } from "@voicecraft/db"
 declare module "next-auth" {
   interface User {
     emailVerified?: Date | null
+    subscriptionStatus?: string | null
+    planTier?: string | null
+    subscriptionVersion?: number
+  }
+  interface Session {
+    user: {
+      id: string
+      email: string
+      name?: string | null
+      emailVerified: Date | null
+      subscriptionStatus: string | null
+      planTier: string | null
+    }
   }
 }
 
@@ -89,6 +102,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.name = user.name
         token.emailVerified = (user as { emailVerified?: Date | null }).emailVerified ?? null
       }
+
+      // Fetch subscription on sign-in OR refresh stale data on token rotation
+      const userId = (user?.id ?? token.id) as string | undefined
+      if (userId && (user || trigger === "update" || !token.subscriptionStatus)) {
+        const [sub, dbUser] = await Promise.all([
+          prisma.subscription.findUnique({
+            where: { userId },
+            select: { status: true, planTier: true },
+          }),
+          prisma.user.findUnique({
+            where: { id: userId },
+            select: { subscriptionVersion: true },
+          }),
+        ])
+        token.subscriptionStatus = sub?.status ?? null
+        token.planTier = sub?.planTier ?? null
+        token.subscriptionVersion = dbUser?.subscriptionVersion ?? 0
+      }
+
       if (trigger === "update" && typeof session?.name === "string") {
         token.name = session.name
       }
@@ -103,6 +135,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.emailVerified = token.emailVerified
           ? new Date(token.emailVerified as string)
           : null
+        session.user.subscriptionStatus = (token.subscriptionStatus as string) ?? null
+        session.user.planTier = (token.planTier as string) ?? null
       }
       return session
     },
