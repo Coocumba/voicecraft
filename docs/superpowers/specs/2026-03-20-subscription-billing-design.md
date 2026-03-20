@@ -245,7 +245,7 @@ Stripe Price IDs are stored in the Plan table in the database, not hardcoded.
 
 ### Trial Limits
 
-- 60 minutes (regardless of chosen tier)
+- 60 minutes (regardless of chosen tier) — **this is a hard limit**. When trial minutes are exhausted, the agent is paused (dispatch rules torn down). The call-handling path checks `status === TRIALING && minutesUsed >= TRIAL_MINUTES` after incrementing usage; if exceeded, the agent is paused and the user sees "Trial minutes used up — add a payment method to continue."
 - 1 agent (regardless of chosen tier)
 - Full tier limits unlock only after trial converts to paid
 
@@ -328,7 +328,7 @@ On any of these transitions:
 **Note:** `unstable_update` from Auth.js v5 is a client-triggered mechanism and cannot be called from a server-side webhook handler. Do not attempt server-push JWT invalidation.
 
 **Middleware behavior:**
-- No subscription in JWT → redirect to `/dashboard/choose-plan`
+- No subscription in JWT → redirect to `/dashboard/choose-plan` **unless the current path is already `/dashboard/choose-plan`** (avoids infinite redirect loop). Any callback/success paths under `choose-plan` must also be exempted.
 - `PAUSED` or `CANCELED` → allow access but dashboard layout renders warning banner
 - `PAST_DUE` → allow access, dashboard layout renders payment warning banner
 - Banners and action blocking (agent creation/deployment) are enforced in the dashboard layout and API routes, not in middleware
@@ -354,7 +354,7 @@ Authenticated via Stripe webhook signature verification. Exempt from session aut
 | Event | Action |
 |---|---|
 | `customer.subscription.created` | Upsert local Subscription record + UsageRecord (idempotent — record may already exist from the checkout API response) |
-| `customer.subscription.updated` | Sync status, plan tier, period dates. If Stripe status → `past_due`/`unpaid`/`paused`, set local status to `PAUSED` and pause agents (tear down dispatch rules). **Intentional design:** Stripe's `canceled` status in `updated` events also maps to local `PAUSED` (not `CANCELED`) — this keeps the door open for recovery. Only the `deleted` event is terminal. |
+| `customer.subscription.updated` | Sync status, period dates, and **re-derive `planTier`** from `stripePriceId` via Plan table lookup (handles downgrades/upgrades). If Stripe status → `past_due`/`unpaid`/`paused`, set local status to `PAUSED` and pause agents (tear down dispatch rules). **Intentional design:** Stripe's `canceled` status in `updated` events also maps to local `PAUSED` (not `CANCELED`) — this keeps the door open for recovery. Only the `deleted` event is terminal. **This handler does NOT create UsageRecords** — that is exclusively the `invoice.paid` handler's responsibility. |
 | `customer.subscription.deleted` | Set Subscription to `CANCELED` (terminal, overrides `PAUSED`), pause all agents. This is the only path to local `CANCELED` status. |
 | `invoice.paid` | If was `PAST_DUE`/`PAUSED` → restore to `ACTIVE`, re-create LiveKit dispatch rules for previously-active agents (background task). Create new UsageRecord for new billing period — read period dates from `invoice.lines.data[0].period.start` / `period.end` (subscription item period), NOT from `invoice.period_start` (invoice period). |
 | `invoice.payment_failed` | Update Subscription to `PAST_DUE`, trigger dunning email |
@@ -405,7 +405,7 @@ Authenticated via Stripe webhook signature verification. Exempt from session aut
 Following the pattern used by Edgee (billions of events) and Stripe's recommendations:
 
 1. **Buffered reporting** — After each call ends, increment `UsageRecord.minutesUsed` in DB (fast local write). A periodic job (every 5 min) batches and reports to Stripe Billing Meters.
-2. **Stripe Billing Meters** — Send events with timestamps and quantities. **Every meter event must include a stable `identifier`** for deduplication — use `usageRecord.id` as the identifier (one event per usage record per reporting cycle). The periodic job tracks `lastReportedMinutes` on the UsageRecord and only reports the delta. If the job crashes mid-batch, the same `identifier` with the same quantity is re-sent and Stripe deduplicates it.
+2. **Stripe Billing Meters** — Send events with timestamps and quantities. **Every meter event must include a stable `identifier`** for deduplication — use `${usageRecord.id}:${lastReportedMinutes}` as the identifier. The periodic job reports the delta (`minutesUsed - lastReportedMinutes`) and then updates `lastReportedMinutes`. On crash-and-retry, `lastReportedMinutes` hasn't been updated yet, so the same identifier + same delta is re-sent and Stripe deduplicates it. Only after successful Stripe confirmation is `lastReportedMinutes` updated.
 3. **Alert thresholds checked on write** — When incrementing `minutesUsed`, check the returned value against thresholds. Queue alert emails via Resend (non-blocking).
 4. **Daily reconciliation cron** — Compares local UsageRecord totals against Stripe meter readings. Logs discrepancies. Also purges StripeEvent records older than 30 days.
 
