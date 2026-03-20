@@ -16,5 +16,5 @@ export const prisma =
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
 
 export { PrismaClient } from "@prisma/client"
-export { AgentStatus, CallOutcome, AppointmentStatus, ConversationStatus, IntegrationProvider, PhoneNumberStatus, MessageChannel, MessageDirection, MessageSender, MessagingStatus, WhatsAppStatus } from "@prisma/client"
-export type { User, Agent, Call, Appointment, BuilderConversation, Integration, Contact, PhoneNumber, Conversation, Message, Prisma } from "@prisma/client"
+export { AgentStatus, CallOutcome, AppointmentStatus, ConversationStatus, IntegrationProvider, PhoneNumberStatus, MessageChannel, MessageDirection, MessageSender, MessagingStatus, WhatsAppStatus, SubscriptionStatus, PlanTier, BillingCycle } from "@prisma/client"
+export type { User, Agent, Call, Appointment, BuilderConversation, Integration, Contact, PhoneNumber, Conversation, Message, Plan, Subscription, UsageRecord, StripeEvent, Prisma } from "@prisma/client"

@@ -13,6 +13,8 @@ model User {
   name                    String?
   passwordHash            String?
   emailVerified           DateTime?
+  stripeCustomerId        String?                 @unique
+  subscriptionVersion     Int                     @default(0)
   agents                  Agent[]
   conversations           BuilderConversation[]
   integrations            Integration[]
@@ -20,6 +22,7 @@ model User {
   phoneNumbers            PhoneNumber[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
+  subscription            Subscription?
   createdAt               DateTime                @default(now())
   updatedAt               DateTime                @updatedAt
 }
@@ -107,6 +110,7 @@ enum AgentStatus {
   DRAFT
   ACTIVE
   INACTIVE
+  PAUSED
 }
 
 enum CallOutcome {
@@ -274,4 +278,92 @@ model PasswordResetToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ── Billing ─────────────────────────────────────────────────────────────────
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  PAUSED
+}
+
+enum PlanTier {
+  STARTER
+  GROWTH
+  PROFESSIONAL
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+model Plan {
+  id                  String         @id @default(cuid())
+  tier                PlanTier       @unique
+  name                String
+  monthlyPrice        Int
+  annualPricePerMonth Int
+  annualPriceTotal    Int
+  minutesIncluded     Int
+  overagePerMinute    Int
+  maxAgents           Int
+  stripePriceMonthly  String
+  stripePriceAnnual   String
+  stripeOveragePrice  String
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  subscriptions       Subscription[]
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id])
+  planId               String
+  plan                 Plan               @relation(fields: [planId], references: [id])
+  stripeSubscriptionId String             @unique
+  stripePriceId        String
+  status               SubscriptionStatus
+  planTier             PlanTier
+  billingCycle         BillingCycle
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  trialStart           DateTime?
+  trialEnd             DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  pendingPlanTier      PlanTier?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  usageRecords         UsageRecord[]
+}
+
+model UsageRecord {
+  id                  String       @id @default(cuid())
+  userId              String
+  subscriptionId      String
+  subscription        Subscription @relation(fields: [subscriptionId], references: [id])
+  periodStart         DateTime
+  periodEnd           DateTime
+  minutesUsed         Int          @default(0)
+  lastReportedMinutes Int          @default(0)
+  minutesIncluded     Int
+  maxAgents           Int
+  overagePerMinute    Int
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@unique([subscriptionId, periodStart])
+  @@index([userId])
+}
+
+model StripeEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now())
+
+  @@index([processedAt])
 }
