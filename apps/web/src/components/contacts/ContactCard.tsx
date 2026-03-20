@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { formatDate } from '@/lib/date-utils'
+import { LocalTime } from '@/components/ui/LocalTime'
 
 export interface ContactCardData {
   id: string
@@ -40,9 +40,9 @@ function PencilIcon() {
   )
 }
 
-function formatLastCalled(isoString: string | null): string {
-  if (!isoString) return 'Never called'
-  return `Last called ${formatDate(new Date(isoString))}`
+function LastCalled({ date }: { date: string | null }) {
+  if (!date) return <span>Never called</span>
+  return <span>Last called <LocalTime date={date} format="date" /></span>
 }
 
 export function ContactCard({ contact: initialContact }: ContactCardProps) {
@@ -165,7 +165,7 @@ export function ContactCard({ contact: initialContact }: ContactCardProps) {
       <p className="text-xs text-muted mt-2">
         {callStat}
         {contact.callCount > 0 && contact.lastCalledAt && (
-          <> · {formatLastCalled(contact.lastCalledAt)}</>
+          <> · <LastCalled date={contact.lastCalledAt} /></>
         )}
         {contact.appointmentCount > 0 && (
           <> · {contact.appointmentCount}{' '}

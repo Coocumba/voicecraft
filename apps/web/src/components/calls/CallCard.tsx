@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { formatDateTime, formatDuration } from '@/lib/date-utils'
+import { formatDuration } from '@/lib/date-utils'
+import { LocalTime } from '@/components/ui/LocalTime'
 
 export type CallOutcomeValue = 'COMPLETED' | 'MISSED' | 'ESCALATED'
 
@@ -66,7 +67,6 @@ function OutcomeDot({ outcome }: { outcome: CallOutcomeValue }) {
 export function CallCard({ call }: CallCardProps) {
   const [expanded, setExpanded] = useState(false)
   const hasDetails = Boolean(call.transcript || call.summary)
-  const createdAt = new Date(call.createdAt)
 
   return (
     <article className="bg-white rounded-xl border border-border p-5 transition-shadow hover:shadow-sm">
@@ -92,9 +92,7 @@ export function CallCard({ call }: CallCardProps) {
 
         {/* Right: date/time + duration + outcome */}
         <div className="flex-shrink-0 text-right">
-          <p className="text-xs text-muted">
-            {formatDateTime(createdAt)}
-          </p>
+          <LocalTime date={call.createdAt} className="text-xs text-muted" />
           {call.duration != null && (
             <p className="text-xs text-muted mt-0.5">
               {formatDuration(call.duration)}
