@@ -1,4 +1,3 @@
-import Link from "next/link"
 import { auth } from "@/auth"
 import { PublicHeader } from "@/components/layout/PublicHeader"
 import { PublicFooter } from "@/components/layout/PublicFooter"
