@@ -30,7 +30,7 @@ model User {
 model Agent {
   id                       String               @id @default(cuid())
   userId                   String
-  user                     User                 @relation(fields: [userId], references: [id])
+  user                     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   name                     String
   businessName             String
   status                   AgentStatus          @default(DRAFT)
@@ -42,7 +42,7 @@ model Agent {
   liveKitTrunkId           String?
   liveKitDispatchId        String?
   conversationId           String?
-  conversation             BuilderConversation? @relation(fields: [conversationId], references: [id])
+  conversation             BuilderConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   calls                    Call[]
   appointments             Appointment[]
   poolNumber               PhoneNumber?
@@ -95,7 +95,7 @@ model Appointment {
 model BuilderConversation {
   id              String             @id @default(cuid())
   userId          String
-  user            User               @relation(fields: [userId], references: [id])
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   agents          Agent[]
   messages        Json
   generatedConfig Json?
@@ -133,7 +133,7 @@ enum ConversationStatus {
 model Integration {
   id           String              @id @default(cuid())
   userId       String
-  user         User                @relation(fields: [userId], references: [id])
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider     IntegrationProvider
   accessToken  String
   refreshToken String?
@@ -149,7 +149,7 @@ model Integration {
 model Contact {
   id           String    @id @default(cuid())
   userId       String
-  user         User      @relation(fields: [userId], references: [id])
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   phone        String
   name         String?
   email        String?
