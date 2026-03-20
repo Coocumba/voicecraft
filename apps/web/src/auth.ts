@@ -101,28 +101,32 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id
         token.name = user.name
         token.emailVerified = (user as { emailVerified?: Date | null }).emailVerified ?? null
-      }
 
-      // Fetch subscription on sign-in OR refresh stale data on token rotation
-      const userId = (user?.id ?? token.id) as string | undefined
-      if (userId && (user || trigger === "update" || !token.subscriptionStatus)) {
-        const [sub, dbUser] = await Promise.all([
-          prisma.subscription.findUnique({
-            where: { userId },
-            select: { status: true, planTier: true },
-          }),
-          prisma.user.findUnique({
-            where: { id: userId },
-            select: { subscriptionVersion: true },
-          }),
-        ])
+        // Fetch subscription data on sign-in only (runs in Node.js context).
+        // The jwt callback also runs on every request via middleware (Edge Runtime),
+        // where Prisma is NOT available. So we only do DB reads when `user` is
+        // present (sign-in flow). Subscription status may be stale between sign-ins,
+        // but real enforcement happens at the API route level (Node.js), not here.
+        const sub = await prisma.subscription.findUnique({
+          where: { userId: user.id as string },
+          select: { status: true, planTier: true },
+        })
         token.subscriptionStatus = sub?.status ?? null
         token.planTier = sub?.planTier ?? null
-        token.subscriptionVersion = dbUser?.subscriptionVersion ?? 0
       }
 
-      if (trigger === "update" && typeof session?.name === "string") {
-        token.name = session.name
+      if (trigger === "update") {
+        if (typeof session?.name === "string") {
+          token.name = session.name
+        }
+        // Allow client-side session update to refresh subscription status
+        // (e.g. after completing checkout, call update({ subscriptionStatus, planTier }))
+        if (typeof session?.subscriptionStatus === "string") {
+          token.subscriptionStatus = session.subscriptionStatus
+        }
+        if (typeof session?.planTier === "string") {
+          token.planTier = session.planTier
+        }
       }
       return token
     },
