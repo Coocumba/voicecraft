@@ -63,12 +63,12 @@ export function ChoosePlanClient({ plans }: ChoosePlanClientProps) {
   }
 
   return (
-    <div className="h-screen bg-cream flex flex-col items-center justify-center px-4 sm:px-6 overflow-hidden">
+    <div className="min-h-screen md:h-screen bg-cream flex flex-col items-center md:justify-center px-4 sm:px-6 py-8 md:py-0 md:overflow-hidden">
       {/* Logo */}
-      <p className="font-serif text-lg text-ink mb-8">VoiceCraft</p>
+      <p className="font-serif text-lg text-ink mb-6 md:mb-4">VoiceCraft</p>
 
       {/* Heading */}
-      <div className="text-center mb-6 max-w-xl">
+      <div className="text-center mb-5 md:mb-4 max-w-xl">
         <h1 className="font-serif text-2xl sm:text-3xl text-ink mb-2">
           Choose your plan
         </h1>
@@ -79,7 +79,7 @@ export function ChoosePlanClient({ plans }: ChoosePlanClientProps) {
       </div>
 
       {/* Billing toggle */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-6 md:mb-5">
         <span
           className={`text-sm ${!annual ? 'text-ink font-medium' : 'text-muted'}`}
         >
@@ -103,9 +103,11 @@ export function ChoosePlanClient({ plans }: ChoosePlanClientProps) {
         >
           Annual
         </span>
-        <span className="text-xs font-medium text-accent bg-accent/8 border border-accent/20 px-2 py-0.5 rounded-full">
-          Save 20%
-        </span>
+        {annual && (
+          <span className="text-xs font-medium text-accent bg-accent/8 border border-accent/20 px-2 py-0.5 rounded-full">
+            Save 20%
+          </span>
+        )}
       </div>
 
       {/* Plan cards */}
@@ -114,7 +116,7 @@ export function ChoosePlanClient({ plans }: ChoosePlanClientProps) {
           Plans are being configured. Please check back shortly.
         </div>
       )}
-      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
         {plans.map((plan) => {
           const isGrowth = plan.tier === 'GROWTH'
           return (
@@ -141,6 +143,11 @@ export function ChoosePlanClient({ plans }: ChoosePlanClientProps) {
           )
         })}
       </div>
+
+      {/* Footer note */}
+      <p className="text-xs text-muted mt-5 md:mt-4">
+        Prices in USD. Local currency applied at checkout.
+      </p>
     </div>
   )
 }

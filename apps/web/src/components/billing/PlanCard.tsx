@@ -85,11 +85,10 @@ export function PlanCard({
           <span className="font-serif text-4xl text-ink">${priceInDollars}</span>
           <span className="text-sm text-muted">/mo</span>
         </div>
-        {cycle === 'ANNUAL' && (
-          <p className="text-xs text-muted mt-1">
-            Billed annually (${annualTotalDollars}/yr)
-          </p>
-        )}
+        {/* Reserve a fixed line so card height doesn't shift on toggle */}
+        <p className={`text-xs mt-1 h-4 ${cycle === 'ANNUAL' ? 'text-muted' : 'text-transparent select-none'}`}>
+          Billed annually (${annualTotalDollars}/yr)
+        </p>
       </div>
 
       <button
