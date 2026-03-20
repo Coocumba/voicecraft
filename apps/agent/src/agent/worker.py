@@ -333,8 +333,10 @@ async def entrypoint(ctx: JobContext) -> None:
 
     call_start = time.monotonic()
 
-    # Issue #1: Use an asyncio.Event to ensure the call log task completes
-    # before the session fully shuts down, even if the event loop is draining.
+    # Two events track the session lifecycle:
+    # 1. session_closed — fires when the LiveKit session ends (call hangs up)
+    # 2. log_done — fires when the POST to /api/calls completes (or fails)
+    session_closed = asyncio.Event()
     log_done = asyncio.Event()
 
     async def _do_log_call() -> None:
@@ -346,7 +348,7 @@ async def entrypoint(ctx: JobContext) -> None:
                 return
             log.info("call_ended", agent_id=agent_id, duration=duration)
 
-            # Issue #9: build transcript with a note if it may be incomplete
+            # Build transcript with a note if it may be incomplete
             transcript_lines: list[str] = []
             try:
                 for message in session.history.messages():
@@ -371,6 +373,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     @session.on("close")
     def _on_session_close() -> None:
+        session_closed.set()
         asyncio.create_task(_do_log_call())
 
     await session.start(agent=agent, room=ctx.room)
@@ -380,11 +383,13 @@ async def entrypoint(ctx: JobContext) -> None:
     # LLM exactly what to say first rather than waiting for the caller to speak.
     await session.generate_reply(instructions=greeting)
 
-    # Wait for the session to finish (framework keeps this alive until close).
-    # Then ensure call logging completes before the entrypoint returns.
-    # The timeout prevents the entrypoint from hanging indefinitely if the
-    # Next.js /api/calls endpoint is slow or unreachable during teardown.
-    # Must exceed the HTTP timeout (10 s) to avoid racing the request.
+    # Wait for the session to end (call hangs up). No timeout here — the call
+    # can last as long as it needs to.
+    await session_closed.wait()
+
+    # Now that the session is closed, wait for the call log POST to complete.
+    # This has a timeout so the entrypoint isn't held indefinitely if the
+    # Next.js API is slow or unreachable.
     try:
         await asyncio.wait_for(log_done.wait(), timeout=15.0)
     except asyncio.TimeoutError:
