@@ -23,9 +23,9 @@ export async function seedPlans(prisma: PrismaClient): Promise<void> {
       minutesIncluded: 500,
       overagePerMinute: 5,
       maxAgents: 1,
-      stripePriceMonthly: "price_starter_monthly_placeholder",
-      stripePriceAnnual: "price_starter_annual_placeholder",
-      stripeOveragePrice: "price_starter_overage_placeholder",
+      stripePriceMonthly: process.env.STRIPE_PRICE_STARTER_MONTHLY ?? "price_starter_monthly_placeholder",
+      stripePriceAnnual: process.env.STRIPE_PRICE_STARTER_ANNUAL ?? "price_starter_annual_placeholder",
+      stripeOveragePrice: process.env.STRIPE_PRICE_STARTER_OVERAGE ?? "price_starter_overage_placeholder",
     },
     {
       tier: PlanTier.GROWTH,
@@ -36,9 +36,9 @@ export async function seedPlans(prisma: PrismaClient): Promise<void> {
       minutesIncluded: 1500,
       overagePerMinute: 4,
       maxAgents: 3,
-      stripePriceMonthly: "price_growth_monthly_placeholder",
-      stripePriceAnnual: "price_growth_annual_placeholder",
-      stripeOveragePrice: "price_growth_overage_placeholder",
+      stripePriceMonthly: process.env.STRIPE_PRICE_GROWTH_MONTHLY ?? "price_growth_monthly_placeholder",
+      stripePriceAnnual: process.env.STRIPE_PRICE_GROWTH_ANNUAL ?? "price_growth_annual_placeholder",
+      stripeOveragePrice: process.env.STRIPE_PRICE_GROWTH_OVERAGE ?? "price_growth_overage_placeholder",
     },
     {
       tier: PlanTier.PROFESSIONAL,
@@ -49,9 +49,9 @@ export async function seedPlans(prisma: PrismaClient): Promise<void> {
       minutesIncluded: 5000,
       overagePerMinute: 3,
       maxAgents: 10,
-      stripePriceMonthly: "price_professional_monthly_placeholder",
-      stripePriceAnnual: "price_professional_annual_placeholder",
-      stripeOveragePrice: "price_professional_overage_placeholder",
+      stripePriceMonthly: process.env.STRIPE_PRICE_PRO_MONTHLY ?? "price_professional_monthly_placeholder",
+      stripePriceAnnual: process.env.STRIPE_PRICE_PRO_ANNUAL ?? "price_professional_annual_placeholder",
+      stripeOveragePrice: process.env.STRIPE_PRICE_PRO_OVERAGE ?? "price_professional_overage_placeholder",
     },
   ]
 
