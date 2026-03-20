@@ -248,8 +248,8 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
                   {agent.calls.map((call) => (
                     <tr key={call.id} className="hover:bg-cream/50 transition-colors">
                       <td className="px-5 py-3 text-ink whitespace-nowrap"><LocalTime date={call.createdAt} /></td>
-                      <td className="px-5 py-3 text-muted">{call.callerNumber ?? 'Unknown'}</td>
-                      <td className="px-5 py-3 text-muted">{call.duration != null ? formatDuration(call.duration) : '—'}</td>
+                      <td className="px-5 py-3 text-muted">{call.callerNumber ?? 'Test call'}</td>
+                      <td className="px-5 py-3 text-muted">{call.duration != null && call.duration > 0 ? formatDuration(call.duration) : '—'}</td>
                       <td className="px-5 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${outcomeBadgeClass(call.outcome)}`}>
                           {outcomeLabel(call.outcome)}

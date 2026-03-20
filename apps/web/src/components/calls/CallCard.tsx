@@ -76,7 +76,7 @@ export function CallCard({ call }: CallCardProps) {
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 flex-wrap">
             <span className="text-sm font-medium text-ink">
-              {call.callerNumber ?? 'Unknown caller'}
+              {call.callerNumber ?? 'Test call'}
             </span>
             {call.isReturningCaller && (
               <span className="text-xs text-muted">returning</span>
@@ -93,7 +93,7 @@ export function CallCard({ call }: CallCardProps) {
         {/* Right: date/time + duration + outcome */}
         <div className="flex-shrink-0 text-right">
           <LocalTime date={call.createdAt} className="text-xs text-muted" />
-          {call.duration != null && (
+          {call.duration != null && call.duration > 0 && (
             <p className="text-xs text-muted mt-0.5">
               {formatDuration(call.duration)}
             </p>
