@@ -85,6 +85,10 @@ Postgres via Prisma with the following models: `User`, `Agent`, `Call`, `Appoint
 | `POST /api/phone-numbers/cleanup` | Trigger stale number cleanup (API-key protected) |
 | `GET /api/livekit/token` | Generate LiveKit room tokens |
 | `GET /api/integrations/google` | Google Calendar OAuth callback |
+| `POST /api/billing/checkout` | Create Stripe Checkout session for plan selection |
+| `POST /api/billing/portal` | Create Stripe Customer Portal session |
+| `GET /api/billing/usage` | Get current billing period usage |
+| `POST /api/webhooks/stripe` | Stripe webhook handler (subscription lifecycle, invoices) |
 
 ### Dashboard
 
@@ -206,6 +210,8 @@ uv run python -m src.agent.worker start
 | `TWILIO_WA_REMINDER_SID` | Meta-approved WhatsApp template SID for appointment reminders (optional) |
 | `CRON_SECRET` | Bearer token for authenticating `POST /api/cron/appointment-reminders` |
 | `NEXT_PUBLIC_APP_URL` | Base URL (e.g. `http://localhost:3000`) |
+| `STRIPE_SECRET_KEY` | Stripe server-side API key for billing |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signature verification secret |
 
 ### apps/agent (.env)
 
