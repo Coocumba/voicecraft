@@ -83,16 +83,23 @@ function LoadingSkeleton() {
 export function BillingSection() {
   const [data, setData] = useState<UsageData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
 
   useEffect(() => {
     void fetch('/api/billing/usage')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((json: UsageData | null) => {
+      .then((r) => {
+        if (!r.ok) throw new Error('Failed to load billing')
+        return r.json()
+      })
+      .then((json: UsageData) => {
         setData(json)
         setLoading(false)
       })
-      .catch(() => setLoading(false))
+      .catch(() => {
+        setError(true)
+        setLoading(false)
+      })
   }, [])
 
   async function handleManageBilling() {
@@ -115,6 +122,14 @@ export function BillingSection() {
 
   if (loading) {
     return <LoadingSkeleton />
+  }
+
+  if (error) {
+    return (
+      <p className="text-sm text-muted">
+        Could not load billing information. Please try refreshing the page.
+      </p>
+    )
   }
 
   if (!data) {

@@ -53,7 +53,7 @@ export function ChoosePlanClient({ plans }: ChoosePlanClientProps) {
       }
       const data = (await res.json()) as { url?: string };
       if (data.url) {
-        router.push(data.url);
+        window.location.href = data.url;
       } else {
         throw new Error("No checkout URL returned");
       }
