@@ -35,9 +35,10 @@ export function PublicHeader({ ctaHref, signInLabel, activePage }: PublicHeaderP
           >
             Use Cases
           </Link>
+          {/* Pricing visible on mobile — high priority for conversion */}
           <Link
             href="/pricing"
-            className={`hidden sm:inline-flex text-sm px-2 sm:px-3 py-1.5 rounded-lg transition-colors ${
+            className={`text-sm px-2 sm:px-3 py-1.5 rounded-lg transition-colors ${
               activePage === "pricing"
                 ? "text-ink font-medium"
                 : "text-muted hover:text-ink"
