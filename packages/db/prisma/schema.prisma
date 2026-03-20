@@ -322,9 +322,9 @@ model Plan {
 model Subscription {
   id                   String             @id @default(cuid())
   userId               String             @unique
-  user                 User               @relation(fields: [userId], references: [id])
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   planId               String
-  plan                 Plan               @relation(fields: [planId], references: [id])
+  plan                 Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
   stripeSubscriptionId String             @unique
   stripePriceId        String
   status               SubscriptionStatus
@@ -345,7 +345,7 @@ model UsageRecord {
   id                  String       @id @default(cuid())
   userId              String
   subscriptionId      String
-  subscription        Subscription @relation(fields: [subscriptionId], references: [id])
+  subscription        Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   periodStart         DateTime
   periodEnd           DateTime
   minutesUsed         Int          @default(0)
