@@ -282,7 +282,7 @@ export function NewAppointmentDrawer({
               <p className="text-sm text-muted">
                 This appointment won&apos;t sync to your calendar.{' '}
                 <a
-                  href="/api/integrations/google?returnTo=%2Fdashboard%2Fappointments"
+                  href="/api/integrations/google?returnTo=%2Fappointments"
                   className="text-accent hover:underline"
                 >
                   Connect now
