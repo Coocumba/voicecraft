@@ -36,7 +36,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const { searchParams } = new URL(request.url)
   const returnToParam = searchParams.get("returnTo")
-  const returnTo = returnToParam?.startsWith("/dashboard/") ? returnToParam : null
+  const returnTo = returnToParam?.startsWith("/") ? returnToParam : null
 
   // Generate a 32-byte random state token to prevent CSRF.
   const state = randomBytes(32).toString("hex")

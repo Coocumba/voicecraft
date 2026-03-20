@@ -20,7 +20,7 @@ export function VoiceAgentsEmptyState() {
     e.preventDefault()
     const trimmed = value.trim()
     if (!trimmed) return
-    router.push(`/dashboard/voice-agents/new?business=${encodeURIComponent(trimmed)}`)
+    router.push(`/voice-agents/new?business=${encodeURIComponent(trimmed)}`)
   }
 
   function handleExampleClick(prompt: string) {

@@ -319,7 +319,7 @@ export function TestCallClient({ agent }: TestCallClientProps) {
                 Call Again
               </button>
               <Link
-                href={`/dashboard/voice-agents/${agent.id}`}
+                href={`/voice-agents/${agent.id}`}
                 className="flex-1 text-center bg-white text-ink px-6 py-2.5 rounded-full font-medium text-sm border border-border hover:bg-cream transition-colors"
               >
                 Back to Agent

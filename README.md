@@ -30,10 +30,10 @@ voicecraft/
 │   ├── web/                        # Next.js 16 — frontend + REST API + agent builder
 │   │   └── src/
 │   │       ├── auth.ts             # NextAuth configuration
-│   │       ├── proxy.ts            # Route protection (/dashboard/*)
+│   │       ├── proxy.ts            # Route protection (/voice-agents/*, /calls/*, etc.)
 │   │       ├── app/
 │   │       │   ├── login/          # Login page
-│   │       │   ├── dashboard/      # Protected dashboard (agents, calls, settings)
+│   │       │   ├── (shell)/        # Protected app routes (agents, calls, settings)
 │   │       │   └── api/            # REST API routes
 │   │       └── components/         # UI components
 │   └── agent/                      # Python — LiveKit voice agent worker

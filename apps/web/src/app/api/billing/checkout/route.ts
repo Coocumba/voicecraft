@@ -157,7 +157,7 @@ export async function POST(request: Request) {
 
       // No redirect to Stripe — send user straight to the dashboard
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ""
-      return Response.json({ url: `${appUrl}/dashboard?checkout=success` })
+      return Response.json({ url: `${appUrl}/voice-agents?checkout=success` })
     }
 
     // ── Re-subscribing user: use Stripe Checkout (card required, no trial) ──
@@ -176,7 +176,7 @@ export async function POST(request: Request) {
           billingCycle: cycle,
         },
       },
-      success_url: `${appUrl}/dashboard?checkout=success`,
+      success_url: `${appUrl}/voice-agents?checkout=success`,
       cancel_url: `${appUrl}/choose-plan`,
     })
 

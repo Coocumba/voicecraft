@@ -12,7 +12,7 @@ export async function authenticate(
     await signIn("credentials", {
       email: formData.get("email"),
       password: formData.get("password"),
-      redirectTo: "/dashboard",
+      redirectTo: "/voice-agents",
     })
   } catch (error) {
     if (error instanceof EmailNotVerifiedError) {

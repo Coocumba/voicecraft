@@ -116,7 +116,7 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
       <div className="flex flex-col sm:flex-row items-start sm:justify-between mb-6 gap-4">
         <div>
           <Link
-            href="/dashboard/voice-agents"
+            href="/voice-agents"
             className="text-xs text-muted hover:text-ink transition-colors mb-2 inline-flex items-center gap-1"
           >
             <span aria-hidden="true">←</span> Voice Agents
@@ -135,13 +135,13 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
 
         <div id="agent-header-actions" className="flex items-center gap-2 flex-shrink-0">
           <Link
-            href={`/dashboard/voice-agents/${agent.id}/edit`}
+            href={`/voice-agents/${agent.id}/edit`}
             className="bg-white text-ink px-4 py-2 rounded-lg text-sm border border-border hover:bg-cream font-medium transition-colors"
           >
             Edit
           </Link>
           <Link
-            href={`/dashboard/voice-agents/${agent.id}/test`}
+            href={`/voice-agents/${agent.id}/test`}
             className="bg-white text-ink px-4 py-2 rounded-lg text-sm border border-border hover:bg-cream font-medium transition-colors"
           >
             Test Call
@@ -184,7 +184,7 @@ export default async function VoiceAgentDetailPage({ params, searchParams }: Pag
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-accent/5 border border-accent/20 rounded-xl px-5 py-3 text-sm text-accent mb-8 gap-3">
           <span>Your agent offers placeholder availability because your calendar isn&apos;t connected.</span>
           <div className="flex-shrink-0">
-            <CalendarConnectButtons returnTo={`/dashboard/voice-agents/${agent.id}`} />
+            <CalendarConnectButtons returnTo={`/voice-agents/${agent.id}`} />
           </div>
         </div>
       )}

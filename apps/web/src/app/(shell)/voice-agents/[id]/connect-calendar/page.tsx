@@ -38,7 +38,7 @@ export default async function ConnectCalendarPage({ params }: PageProps) {
 
   // Skip interstitial if calendar already connected or agent doesn't book
   if (integration || config.can_book_appointments !== true) {
-    redirect(`/dashboard/voice-agents/${id}?new=true`)
+    redirect(`/voice-agents/${id}?new=true`)
   }
 
   return (
@@ -51,10 +51,10 @@ export default async function ConnectCalendarPage({ params }: PageProps) {
           with your schedule.
         </p>
         <div className="space-y-3">
-          <CalendarConnectButtons returnTo={`/dashboard/voice-agents/${id}?new=true`} />
+          <CalendarConnectButtons returnTo={`/voice-agents/${id}?new=true`} />
           <div>
             <Link
-              href={`/dashboard/voice-agents/${id}?new=true`}
+              href={`/voice-agents/${id}?new=true`}
               className="text-sm text-muted hover:text-ink transition-colors"
             >
               Skip for now →

@@ -18,7 +18,7 @@ export default async function ChoosePlanPage() {
   })
 
   if (subscription && subscription.status !== 'CANCELED') {
-    redirect('/dashboard')
+    redirect('/voice-agents')
   }
 
   const plans = await prisma.plan.findMany({

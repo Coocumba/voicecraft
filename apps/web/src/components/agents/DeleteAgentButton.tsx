@@ -23,7 +23,7 @@ export function DeleteAgentButton({ agentId, agentName }: DeleteAgentButtonProps
         throw new Error(data.error ?? 'Failed to delete agent')
       }
       toast.success(`${agentName} deleted`)
-      router.push('/dashboard/voice-agents')
+      router.push('/voice-agents')
       router.refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Something went wrong')

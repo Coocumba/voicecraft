@@ -8,7 +8,7 @@ export default function AgentNotFound() {
         This agent doesn&apos;t exist or you don&apos;t have access.
       </p>
       <Link
-        href="/dashboard/voice-agents"
+        href="/voice-agents"
         className="text-sm text-accent hover:text-accent/80 font-medium"
       >
         ← Back to Voice Agents

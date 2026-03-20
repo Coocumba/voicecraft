@@ -47,7 +47,7 @@ export default async function VoiceAgentsPage() {
       <div className="flex items-center justify-between gap-4 mb-8">
         <h1 className="font-serif text-2xl sm:text-3xl text-ink">Voice Agents</h1>
         <Link
-          href="/dashboard/voice-agents/new"
+          href="/voice-agents/new"
           className="bg-accent text-white px-4 py-2 rounded-lg text-sm hover:bg-accent/90 font-medium transition-colors"
         >
           + New Agent
@@ -60,7 +60,7 @@ export default async function VoiceAgentsPage() {
           return (
             <Link
               key={agent.id}
-              href={`/dashboard/voice-agents/${agent.id}`}
+              href={`/voice-agents/${agent.id}`}
               className="bg-white rounded-xl border border-border p-6 hover:border-accent/40 hover:shadow-sm transition-all group"
             >
               <div className="flex items-start justify-between mb-3">

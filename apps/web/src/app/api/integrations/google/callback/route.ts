@@ -2,7 +2,7 @@
 // GET /api/integrations/google/callback?code=...&state=...
 //
 // Verifies the state token, exchanges the authorization code for tokens,
-// upserts the Integration record, and redirects to /dashboard/settings.
+// upserts the Integration record, and redirects to /settings.
 
 import { auth } from "@/auth"
 import { prisma, IntegrationProvider } from "@voicecraft/db"
@@ -39,11 +39,11 @@ export async function GET(request: Request): Promise<Response> {
   // Handle user-denied consent or other OAuth errors.
   if (error) {
     console.warn("[Google OAuth] Provider returned error", { error, userId: userId })
-    redirect("/dashboard/settings?integration=error&provider=google")
+    redirect("/settings?integration=error&provider=google")
   }
 
   if (!code || !state) {
-    redirect("/dashboard/settings?integration=error&provider=google")
+    redirect("/settings?integration=error&provider=google")
   }
 
   // Verify the state token matches what we set in the cookie.
@@ -55,7 +55,7 @@ export async function GET(request: Request): Promise<Response> {
     const parsed = JSON.parse(cookieValue ?? "") as { csrf?: unknown; returnTo?: unknown }
     storedCsrf = typeof parsed.csrf === "string" ? parsed.csrf : undefined
     returnTo =
-      typeof parsed.returnTo === "string" && parsed.returnTo.startsWith("/dashboard/")
+      typeof parsed.returnTo === "string" && parsed.returnTo.startsWith("/")
         ? parsed.returnTo
         : null
   } catch {
@@ -66,7 +66,7 @@ export async function GET(request: Request): Promise<Response> {
     console.error("[Google OAuth] State mismatch — possible CSRF", {
       userId: userId,
     })
-    redirect("/dashboard/settings?integration=error&provider=google")
+    redirect("/settings?integration=error&provider=google")
   }
 
   // Clear the state cookie immediately — single use.
@@ -78,7 +78,7 @@ export async function GET(request: Request): Promise<Response> {
 
   if (!clientId || !clientSecret || !appUrl) {
     console.error("[Google OAuth] Missing environment variables")
-    redirect("/dashboard/settings?integration=error&provider=google")
+    redirect("/settings?integration=error&provider=google")
   }
 
   // Exchange the authorization code for access + refresh tokens.
@@ -105,13 +105,13 @@ export async function GET(request: Request): Promise<Response> {
         body: text,
         userId: userId,
       })
-      redirect("/dashboard/settings?integration=error&provider=google")
+      redirect("/settings?integration=error&provider=google")
     }
 
     tokenData = (await tokenRes.json()) as GoogleTokenResponse
   } catch (err) {
     console.error("[Google OAuth] Token exchange threw", { err, userId: userId })
-    redirect("/dashboard/settings?integration=error&provider=google")
+    redirect("/settings?integration=error&provider=google")
   }
 
   // Optionally fetch the connected account's email for metadata storage.
@@ -151,11 +151,11 @@ export async function GET(request: Request): Promise<Response> {
     })
   } catch (err) {
     console.error("[Google OAuth] Failed to persist integration", { err, userId })
-    redirect("/dashboard/settings?integration=error&provider=google")
+    redirect("/settings?integration=error&provider=google")
   }
 
   const redirectUrl = returnTo
     ? `${returnTo}${returnTo.includes("?") ? "&" : "?"}integration=success`
-    : "/dashboard/settings?integration=success&provider=google"
+    : "/settings?integration=success&provider=google"
   redirect(redirectUrl)
 }

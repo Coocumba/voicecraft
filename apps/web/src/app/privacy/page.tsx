@@ -29,7 +29,7 @@ const sections = [
 
 export default async function PrivacyPage() {
   const session = await auth()
-  const ctaHref = session ? "/dashboard" : "/login"
+  const ctaHref = session ? "/voice-agents" : "/login"
   const signInLabel = session ? "Dashboard" : "Sign in"
 
   return (

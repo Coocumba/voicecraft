@@ -98,7 +98,7 @@ const features = [
 
 export default async function LandingPage() {
   const session = await auth()
-  const ctaHref = session ? "/dashboard" : "/login"
+  const ctaHref = session ? "/voice-agents" : "/login"
   const ctaLabel = session ? "Go to Dashboard" : "Get started"
   const signInLabel = session ? "Dashboard" : "Sign in"
 

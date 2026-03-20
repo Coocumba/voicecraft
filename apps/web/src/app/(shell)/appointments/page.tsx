@@ -117,7 +117,7 @@ export default async function AppointmentsPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-accent/5 border border-accent/20 rounded-xl px-5 py-3 text-sm text-accent mb-6">
           <span>Connect your calendar to avoid double-bookings and sync appointments automatically.</span>
           <div className="flex-shrink-0">
-            <CalendarConnectButtons returnTo="/dashboard/appointments" />
+            <CalendarConnectButtons returnTo="/appointments" />
           </div>
         </div>
       )}

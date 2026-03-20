@@ -33,7 +33,7 @@ export default async function ChooseNumberPage({ params }: PageProps) {
 
   // If agent already has a number, redirect to detail page
   if (agent.phoneNumber) {
-    redirect(`/dashboard/voice-agents/${id}`)
+    redirect(`/voice-agents/${id}`)
   }
 
   const canProvision = canProvisionNumbers()

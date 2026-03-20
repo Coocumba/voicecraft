@@ -8,7 +8,7 @@ import { PublicFooter } from "@/components/layout/PublicFooter";
 
 export default function PricingPage() {
   const { data: session } = useSession();
-  const ctaHref = session ? "/dashboard" : "/login";
+  const ctaHref = session ? "/voice-agents" : "/login";
   const ctaLabel = session ? "Go to Dashboard" : "Get started";
   const signInLabel = session ? "Dashboard" : "Sign in";
 

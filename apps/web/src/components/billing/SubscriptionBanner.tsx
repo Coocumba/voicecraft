@@ -17,7 +17,7 @@ export function SubscriptionBanner() {
         <p className="text-sm text-accent text-center">
           You are on a free trial.{' '}
           <Link
-            href="/dashboard/settings"
+            href="/settings"
             className="font-medium underline underline-offset-2 hover:text-accent/80 transition-colors"
           >
             Add a payment method
@@ -34,7 +34,7 @@ export function SubscriptionBanner() {
         <p className="text-sm text-red-700 text-center">
           Your subscription is inactive. Your agents are paused.{' '}
           <Link
-            href="/dashboard/settings"
+            href="/settings"
             className="font-medium underline underline-offset-2 hover:text-red-600 transition-colors"
           >
             Reactivate your subscription
@@ -51,7 +51,7 @@ export function SubscriptionBanner() {
         <p className="text-sm text-yellow-800 text-center">
           Payment failed.{' '}
           <Link
-            href="/dashboard/settings"
+            href="/settings"
             className="font-medium underline underline-offset-2 hover:text-yellow-700 transition-colors"
           >
             Update your payment method

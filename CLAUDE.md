@@ -133,8 +133,8 @@ NextAuth v5 (Auth.js) with Credentials provider, JWT sessions, DB-backed user lo
 | Concern | Location | Notes |
 |---|---|---|
 | Config | `src/auth.ts` | Credentials provider, Prisma user lookup |
-| Route protection | `src/proxy.ts` | Guards `/dashboard/*` (Next.js 16 proxy, Node.js runtime) |
-| Login page | `src/app/login/` | Server action → redirects to `/dashboard` |
+| Route protection | `src/proxy.ts` | Guards `/voice-agents/*`, `/calls/*`, etc. (Next.js 16 proxy, Node.js runtime) |
+| Login page | `src/app/login/` | Server action → redirects to `/voice-agents` |
 | Components | `src/components/auth/` | `LoginForm`, `SignOutButton` |
 | Session provider | `src/components/providers/SessionProvider.tsx` | Wraps app in root layout |
 
@@ -208,7 +208,7 @@ Stored in `.env.local` (web) and `.env` (agent). Not committed. See `.env.exampl
 
 ## Adding New Routes
 
-1. Create a folder under `src/app/` — e.g., `src/app/dashboard/`
+1. Create a folder under `src/app/` — e.g., `src/app/voice-agents/`
 2. Add `page.tsx` (required), optionally `layout.tsx`, `loading.tsx`, `error.tsx`
 3. For API routes, add `route.ts` inside the folder
 

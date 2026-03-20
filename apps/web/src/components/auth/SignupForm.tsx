@@ -12,7 +12,7 @@ export function SignupForm() {
     <div className="space-y-4">
       <button
         type="button"
-        onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+        onClick={() => signIn("google", { callbackUrl: "/voice-agents" })}
         className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-border rounded-lg bg-white text-ink text-sm font-medium hover:bg-cream transition-colors"
       >
         <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden="true">

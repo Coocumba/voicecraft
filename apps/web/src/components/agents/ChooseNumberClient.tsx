@@ -134,7 +134,7 @@ export function ChooseNumberClient({
         throw new Error(data.error ?? 'Failed to secure number')
       }
       toast.success('Phone number secured!')
-      router.push(`/dashboard/voice-agents/${agentId}`)
+      router.push(`/voice-agents/${agentId}`)
       router.refresh()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Something went wrong'
@@ -160,7 +160,7 @@ export function ChooseNumberClient({
         throw new Error(data.error ?? 'Failed to assign number')
       }
       toast.success('Number assigned from pool!')
-      router.push(`/dashboard/voice-agents/${agentId}`)
+      router.push(`/voice-agents/${agentId}`)
       router.refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Something went wrong')
@@ -172,7 +172,7 @@ export function ChooseNumberClient({
     return (
       <div className="p-6 sm:p-8 max-w-5xl mx-auto">
         <Link
-          href={`/dashboard/voice-agents/${agentId}`}
+          href={`/voice-agents/${agentId}`}
           className="text-xs text-muted hover:text-ink transition-colors mb-4 inline-flex items-center gap-1"
         >
           <span aria-hidden="true">&larr;</span> Back to agent
@@ -189,7 +189,7 @@ export function ChooseNumberClient({
     <div className="p-6 sm:p-8 max-w-5xl mx-auto">
       {/* Back link */}
       <Link
-        href={`/dashboard/voice-agents/${agentId}`}
+        href={`/voice-agents/${agentId}`}
         className="text-xs text-muted hover:text-ink transition-colors mb-4 inline-flex items-center gap-1"
       >
         <span aria-hidden="true">&larr;</span> Back to agent

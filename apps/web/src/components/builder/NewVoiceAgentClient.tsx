@@ -29,7 +29,7 @@ export function NewVoiceAgentClient({
       {/* Focused top bar */}
       <div className="bg-white border-b border-border h-14 flex items-center justify-between px-4 sm:px-6 flex-shrink-0">
         <Link
-          href="/dashboard/voice-agents"
+          href="/voice-agents"
           className="text-sm text-muted hover:text-ink transition-colors flex items-center gap-1.5"
         >
           <span aria-hidden="true">←</span>

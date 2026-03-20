@@ -9,13 +9,11 @@ import { NextResponse } from "next/server"
  * Node.js runtime — Prisma and other server-only modules are available here.
  * We use Auth.js `auth()` to decode the session from the JWT cookie, then
  * do a lightweight DB check for subscription status when the JWT data is stale.
+ *
+ * The matcher covers all authenticated app routes (no /dashboard prefix).
  */
 export default auth(async (req) => {
   const session = req.auth
-  const { pathname } = req.nextUrl
-
-  const isDashboard = pathname.startsWith("/dashboard")
-  if (!isDashboard) return NextResponse.next()
 
   if (!session) {
     return NextResponse.redirect(new URL("/login", req.nextUrl))
@@ -51,5 +49,12 @@ export default auth(async (req) => {
 })
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: [
+    "/voice-agents/:path*",
+    "/calls/:path*",
+    "/messages/:path*",
+    "/appointments/:path*",
+    "/contacts/:path*",
+    "/settings/:path*",
+  ],
 }

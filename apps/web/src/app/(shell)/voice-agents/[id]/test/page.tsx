@@ -23,7 +23,7 @@ export default async function VoiceAgentTestPage({ params }: PageProps) {
     <div className="p-6 sm:p-8 max-w-5xl mx-auto">
       <div className="mb-6">
         <Link
-          href={`/dashboard/voice-agents/${agent.id}`}
+          href={`/voice-agents/${agent.id}`}
           className="text-xs text-muted hover:text-ink transition-colors inline-flex items-center gap-1 mb-4"
         >
           <span aria-hidden="true">←</span> {agent.name}
@@ -48,13 +48,13 @@ export default async function VoiceAgentTestPage({ params }: PageProps) {
         <p className="text-sm text-muted mb-4">After your test call:</p>
         <div className="flex flex-col sm:flex-row gap-3">
           <Link
-            href={`/dashboard/voice-agents/${agent.id}?tested=true`}
+            href={`/voice-agents/${agent.id}?tested=true`}
             className="inline-flex items-center justify-center bg-accent text-white px-4 py-2 rounded-lg text-sm hover:bg-accent/90 font-medium transition-colors"
           >
             👍 Looks good — Deploy it
           </Link>
           <Link
-            href={`/dashboard/voice-agents/${agent.id}/edit`}
+            href={`/voice-agents/${agent.id}/edit`}
             className="inline-flex items-center justify-center bg-white border border-border text-ink px-4 py-2 rounded-lg text-sm hover:bg-cream font-medium transition-colors"
           >
             💬 Something needs changing

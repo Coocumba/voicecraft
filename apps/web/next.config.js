@@ -9,14 +9,26 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      // Legacy /dashboard prefix — preserves old bookmarks and external links.
       {
-        source: '/dashboard/agents',
-        destination: '/dashboard/voice-agents',
+        source: '/dashboard',
+        destination: '/voice-agents',
         permanent: true,
       },
       {
-        source: '/dashboard/agents/:path*',
-        destination: '/dashboard/voice-agents/:path*',
+        source: '/dashboard/:path*',
+        destination: '/:path*',
+        permanent: true,
+      },
+      // Pre-rename /agents alias.
+      {
+        source: '/agents',
+        destination: '/voice-agents',
+        permanent: true,
+      },
+      {
+        source: '/agents/:path*',
+        destination: '/voice-agents/:path*',
         permanent: true,
       },
     ]

@@ -23,7 +23,7 @@ export default function AgentDetailError({ reset }: ErrorProps) {
         <button onClick={handleReset} className="text-sm text-accent hover:text-accent/80 font-medium transition-colors">
           Try again
         </button>
-        <Link href="/dashboard/voice-agents" className="text-sm text-muted hover:text-ink transition-colors">
+        <Link href="/voice-agents" className="text-sm text-muted hover:text-ink transition-colors">
           ← Back to Voice Agents
         </Link>
       </div>

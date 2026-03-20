@@ -180,7 +180,7 @@ export function BuilderChat({
           throw new Error(data.error ?? 'Failed to update agent')
         }
         toast.success('Agent updated!')
-        router.push(`/dashboard/voice-agents/${agentId}`)
+        router.push(`/voice-agents/${agentId}`)
       } else {
         // Create new agent
         const res = await fetch('/api/agents', {
@@ -199,7 +199,7 @@ export function BuilderChat({
         }
         const data = (await res.json()) as { agent: { id: string } }
         toast.success('Agent created!')
-        router.push(`/dashboard/voice-agents/${data.agent.id}/connect-calendar`)
+        router.push(`/voice-agents/${data.agent.id}/connect-calendar`)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Something went wrong'

@@ -12,11 +12,11 @@ interface TopBarProps {
 }
 
 const services = [
-  { label: 'Voice Agents', href: '/dashboard/voice-agents', available: true },
-  { label: 'Calls', href: '/dashboard/calls', available: true },
-  { label: 'Messages', href: '/dashboard/messages', available: true },
-  { label: 'Appointments', href: '/dashboard/appointments', available: true },
-  { label: 'Contacts', href: '/dashboard/contacts', available: true },
+  { label: 'Voice Agents', href: '/voice-agents', available: true },
+  { label: 'Calls', href: '/calls', available: true },
+  { label: 'Messages', href: '/messages', available: true },
+  { label: 'Appointments', href: '/appointments', available: true },
+  { label: 'Contacts', href: '/contacts', available: true },
   { label: 'Chat Widget', href: '#', available: false },
 ]
 
@@ -64,7 +64,7 @@ export function TopBar({ userName, userEmail }: TopBarProps) {
     <>
       <header className="bg-white border-b border-border h-14 flex items-center px-4 sm:px-6 gap-4 sticky top-0 z-30">
         {/* Logo */}
-        <Link href="/dashboard" className="font-serif text-lg text-ink flex-shrink-0 mr-2">
+        <Link href="/voice-agents" className="font-serif text-lg text-ink flex-shrink-0 mr-2">
           VoiceCraft
         </Link>
 
@@ -112,10 +112,10 @@ export function TopBar({ userName, userEmail }: TopBarProps) {
         {/* Right side */}
         <div className="flex items-center gap-2">
           <Link
-            href="/dashboard/settings"
+            href="/settings"
             className={cn(
               'hidden sm:flex items-center px-3 py-1.5 rounded-lg text-sm transition-colors',
-              pathname.startsWith('/dashboard/settings')
+              pathname.startsWith('/settings')
                 ? 'text-accent bg-accent/5'
                 : 'text-muted hover:text-ink hover:bg-cream'
             )}
@@ -206,7 +206,7 @@ export function TopBar({ userName, userEmail }: TopBarProps) {
               )
             })}
             <Link
-              href="/dashboard/settings"
+              href="/settings"
               onClick={() => setMobileOpen(false)}
               className="flex items-center px-3 py-2 rounded-lg text-sm text-muted hover:text-ink hover:bg-cream transition-colors"
             >

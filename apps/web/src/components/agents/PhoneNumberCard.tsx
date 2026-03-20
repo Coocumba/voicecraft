@@ -261,7 +261,7 @@ export function PhoneNumberCard({
           <div className="text-xs text-muted">
             or{' '}
             <Link
-              href={`/dashboard/voice-agents/${agentId}/choose-number`}
+              href={`/voice-agents/${agentId}/choose-number`}
               className="text-accent hover:text-accent/80 font-medium transition-colors"
             >
               Browse &amp; choose a number →

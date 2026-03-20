@@ -19,7 +19,7 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCa
   // Strip ?new=true / ?tested=true from URL on mount, keep UI visible via local state.
   // Use window.history.replaceState to avoid a React navigation that causes hydration mismatch.
   useEffect(() => {
-    window.history.replaceState(null, '', `/dashboard/voice-agents/${agentId}`)
+    window.history.replaceState(null, '', `/voice-agents/${agentId}`)
   }, [agentId])
 
   if (!visible) return null
@@ -63,7 +63,7 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCa
               Your agent books appointments — connect Calendar to avoid conflicts.
             </p>
             <div className="ml-7">
-              <CalendarConnectButtons returnTo={`/dashboard/voice-agents/${agentId}?new=true`} />
+              <CalendarConnectButtons returnTo={`/voice-agents/${agentId}?new=true`} />
             </div>
           </div>
         )}
@@ -81,7 +81,7 @@ export function GuidedNextSteps({ agentId, agentName, hasTested = false, needsCa
           </p>
           <div className="ml-7">
             <Link
-              href={`/dashboard/voice-agents/${agentId}/test`}
+              href={`/voice-agents/${agentId}/test`}
               className={`inline-flex px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 hasTested
                   ? 'bg-white border border-border text-ink hover:bg-cream'

@@ -139,7 +139,7 @@ function CalendarSection() {
         </p>
       </div>
       <div className="shrink-0">
-        <CalendarConnectButtons returnTo="/dashboard/settings" />
+        <CalendarConnectButtons returnTo="/settings" />
       </div>
     </div>
   )

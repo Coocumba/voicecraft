@@ -3,7 +3,7 @@
 //
 // Verifies the state token, exchanges the authorization code for tokens,
 // enforces one-at-a-time calendar integration (deletes any existing Google/Microsoft),
-// creates the Integration record, and redirects to /dashboard/settings.
+// creates the Integration record, and redirects to /settings.
 
 import { auth } from "@/auth"
 import { prisma, IntegrationProvider } from "@voicecraft/db"
@@ -41,11 +41,11 @@ export async function GET(request: Request): Promise<Response> {
   // Handle user-denied consent or other OAuth errors.
   if (error) {
     console.warn("[Microsoft OAuth] Provider returned error", { error, userId: userId })
-    redirect("/dashboard/settings?integration=error&provider=microsoft")
+    redirect("/settings?integration=error&provider=microsoft")
   }
 
   if (!code || !state) {
-    redirect("/dashboard/settings?integration=error&provider=microsoft")
+    redirect("/settings?integration=error&provider=microsoft")
   }
 
   // Verify the state token matches what we set in the cookie.
@@ -57,7 +57,7 @@ export async function GET(request: Request): Promise<Response> {
     const parsed = JSON.parse(cookieValue ?? "") as { csrf?: unknown; returnTo?: unknown }
     storedCsrf = typeof parsed.csrf === "string" ? parsed.csrf : undefined
     returnTo =
-      typeof parsed.returnTo === "string" && parsed.returnTo.startsWith("/dashboard/")
+      typeof parsed.returnTo === "string" && parsed.returnTo.startsWith("/")
         ? parsed.returnTo
         : null
   } catch {
@@ -68,7 +68,7 @@ export async function GET(request: Request): Promise<Response> {
     console.error("[Microsoft OAuth] State mismatch — possible CSRF", {
       userId: userId,
     })
-    redirect("/dashboard/settings?integration=error&provider=microsoft")
+    redirect("/settings?integration=error&provider=microsoft")
   }
 
   // Clear the state cookie immediately — single use.
@@ -80,7 +80,7 @@ export async function GET(request: Request): Promise<Response> {
 
   if (!clientId || !clientSecret || !appUrl) {
     console.error("[Microsoft OAuth] Missing environment variables")
-    redirect("/dashboard/settings?integration=error&provider=microsoft")
+    redirect("/settings?integration=error&provider=microsoft")
   }
 
   // Exchange the authorization code for access + refresh tokens.
@@ -108,13 +108,13 @@ export async function GET(request: Request): Promise<Response> {
         body: text,
         userId: userId,
       })
-      redirect("/dashboard/settings?integration=error&provider=microsoft")
+      redirect("/settings?integration=error&provider=microsoft")
     }
 
     tokenData = (await tokenRes.json()) as MicrosoftTokenResponse
   } catch (err) {
     console.error("[Microsoft OAuth] Token exchange threw", { err, userId: userId })
-    redirect("/dashboard/settings?integration=error&provider=microsoft")
+    redirect("/settings?integration=error&provider=microsoft")
   }
 
   // Fetch the connected account's email for metadata storage.
@@ -155,11 +155,11 @@ export async function GET(request: Request): Promise<Response> {
     })
   } catch (err) {
     console.error("[Microsoft OAuth] Failed to persist integration", { err, userId })
-    redirect("/dashboard/settings?integration=error&provider=microsoft")
+    redirect("/settings?integration=error&provider=microsoft")
   }
 
   const redirectUrl = returnTo
     ? `${returnTo}${returnTo.includes("?") ? "&" : "?"}integration=success`
-    : "/dashboard/settings?integration=success&provider=microsoft"
+    : "/settings?integration=success&provider=microsoft"
   redirect(redirectUrl)
 }
