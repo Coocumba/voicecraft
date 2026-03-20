@@ -64,7 +64,7 @@ export function TopBar({ userName, userEmail }: TopBarProps) {
     <>
       <header className="bg-white border-b border-border h-14 flex items-center px-4 sm:px-6 gap-4 sticky top-0 z-30">
         {/* Logo */}
-        <Link href="/voice-agents" className="font-serif text-lg text-ink flex-shrink-0 mr-2">
+        <Link href="/home" className="font-serif text-lg text-ink flex-shrink-0 mr-2">
           VoiceCraft
         </Link>
 

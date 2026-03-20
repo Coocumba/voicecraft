@@ -50,6 +50,7 @@ export default auth(async (req) => {
 
 export const config = {
   matcher: [
+    "/home",
     "/voice-agents/:path*",
     "/calls/:path*",
     "/messages/:path*",

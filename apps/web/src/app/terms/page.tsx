@@ -32,7 +32,7 @@ const sections = [
 
 export default async function TermsPage() {
   const session = await auth()
-  const ctaHref = session ? "/voice-agents" : "/login"
+  const ctaHref = session ? "/home" : "/login"
   const signInLabel = session ? "Dashboard" : "Sign in"
 
   return (
