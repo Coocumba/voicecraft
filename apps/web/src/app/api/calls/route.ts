@@ -146,55 +146,54 @@ export async function POST(request: Request) {
     })
 
     // Track call duration against the user's usage record.
-    // Wrapped in its own try/catch so a billing failure never prevents the
-    // call record from being returned to the agent worker.
+    // Awaited so trial exhaustion (hard limit) is reliably enforced.
+    // Wrapped in its own try/catch so a billing failure never prevents
+    // the call record from being returned to the agent worker.
     if (typeof duration === "number" && duration > 0) {
-      ;(async () => {
-        try {
-          const usageRecord = await getCurrentUsageRecord(agent.userId)
-          if (!usageRecord) return
-
+      try {
+        const usageRecord = await getCurrentUsageRecord(agent.userId)
+        if (usageRecord) {
           const prevMinutes = usageRecord.minutesUsed
           const updated = await incrementUsage(
             usageRecord.subscriptionId,
             usageRecord.periodStart,
             duration
           )
-          if (!updated) return
 
-          // If the user is on a trial and has exhausted their free minutes,
-          // pause all their agents immediately.
-          const subscription = await prisma.subscription.findUnique({
-            where: { userId: agent.userId },
-            select: { status: true },
-          })
-          if (subscription?.status === "TRIALING" && isTrialMinutesExhausted(updated.minutesUsed)) {
-            await pauseUserAgents(agent.userId)
-            console.warn("[POST /api/calls] Trial minutes exhausted — agents paused", {
-              userId: agent.userId,
-              minutesUsed: updated.minutesUsed,
+          if (updated) {
+            // If the user is on a trial and has exhausted their free minutes,
+            // pause all their agents immediately (hard limit).
+            const subscription = await prisma.subscription.findUnique({
+              where: { userId: agent.userId },
+              select: { status: true },
             })
-            return
+            if (subscription?.status === "TRIALING" && isTrialMinutesExhausted(updated.minutesUsed)) {
+              await pauseUserAgents(agent.userId)
+              console.warn("[POST /api/calls] Trial minutes exhausted — agents paused", {
+                userId: agent.userId,
+                minutesUsed: updated.minutesUsed,
+              })
+            } else {
+              const crossed = checkThresholdCrossed(
+                prevMinutes,
+                updated.minutesUsed,
+                updated.minutesIncluded
+              )
+              if (crossed) {
+                // TODO: Send threshold alert email via Resend
+                console.info("[POST /api/calls] Usage threshold crossed", {
+                  userId: agent.userId,
+                  threshold: crossed.label,
+                  minutesUsed: updated.minutesUsed,
+                  minutesIncluded: updated.minutesIncluded,
+                })
+              }
+            }
           }
-
-          const crossed = checkThresholdCrossed(
-            prevMinutes,
-            updated.minutesUsed,
-            updated.minutesIncluded
-          )
-          if (crossed) {
-            // TODO: Send threshold alert email via Resend
-            console.info("[POST /api/calls] Usage threshold crossed", {
-              userId: agent.userId,
-              threshold: crossed.label,
-              minutesUsed: updated.minutesUsed,
-              minutesIncluded: updated.minutesIncluded,
-            })
-          }
-        } catch (err) {
-          console.error("[POST /api/calls] Usage tracking failed", err)
         }
-      })()
+      } catch (usageErr) {
+        console.error("[POST /api/calls] Usage tracking failed", usageErr)
+      }
     }
 
     // Fire-and-forget contact upsert — does not block the response
