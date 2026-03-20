@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import { PlanCard } from "@/components/billing/PlanCard";
 
@@ -138,10 +139,17 @@ export function ChoosePlanClient({ plans }: ChoosePlanClientProps) {
         })}
       </div>
 
-      {/* Footer note */}
-      <p className="text-xs text-muted mt-5 md:mt-4">
-        Prices in USD. Local currency applied at checkout.
-      </p>
+      {/* Footer */}
+      <div className="flex items-center gap-3 mt-5 md:mt-4 text-xs text-muted">
+        <span>Prices in USD. Local currency applied at checkout.</span>
+        <span className="text-border">&middot;</span>
+        <button
+          onClick={() => void signOut({ callbackUrl: "/" })}
+          className="hover:text-ink transition-colors underline underline-offset-2"
+        >
+          Sign out
+        </button>
+      </div>
     </div>
   );
 }
