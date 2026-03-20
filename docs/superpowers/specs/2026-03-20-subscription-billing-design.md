@@ -53,8 +53,9 @@ Key principle: local cache is always *derived from* Stripe. If there's a mismatc
 ```prisma
 model User {
   // ... existing fields ...
-  stripeCustomerId    String?   @unique
-  subscription        Subscription?
+  stripeCustomerId      String?   @unique
+  subscriptionVersion   Int       @default(0)  // incremented by webhook handlers
+  subscription          Subscription?
 }
 ```
 
@@ -76,7 +77,6 @@ model Plan {
   stripePriceMonthly    String                     // Stripe price ID
   stripePriceAnnual     String                     // Stripe price ID
   stripeOveragePrice    String                     // Stripe metered price ID
-  trialDays             Int       @default(14)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   subscriptions         Subscription[]
@@ -85,7 +85,7 @@ model Plan {
 
 **Notes:**
 - `annualPricePerMonth` is the display value ($39/mo); `annualPriceTotal` is what Stripe actually charges ($468/yr). Stripe Price IDs are the source of truth for billing amounts.
-- `trialMinutes` removed — trial minute limit (60) is a global constant in `src/lib/plans.ts`, not per-plan.
+- `trialMinutes` and `trialDays` removed — both are uniform across tiers. Defined as global constants in `src/lib/plans.ts`: `TRIAL_MINUTES = 60`, `TRIAL_DAYS = 14`.
 - `extraAgentPrice` removed — extra agent add-ons are out of scope for v1 (see Section 16). The pricing page row will say "Contact us" for extra agents until add-on purchasing is implemented.
 
 ### New: Subscription
@@ -129,8 +129,9 @@ model UsageRecord {
   subscription     Subscription @relation(fields: [subscriptionId], references: [id])
   periodStart      DateTime
   periodEnd        DateTime
-  minutesUsed      Int          @default(0)
-  minutesIncluded  Int                        // snapshot from Plan at period start
+  minutesUsed          Int          @default(0)
+  lastReportedMinutes  Int          @default(0)  // last value reported to Stripe Billing Meters
+  minutesIncluded      Int                        // snapshot from Plan at period start
   maxAgents        Int                        // snapshot from Plan at period start
   overagePerMinute Int                        // snapshot from Plan at period start (cents)
   createdAt        DateTime     @default(now())
@@ -313,11 +314,18 @@ On any of these transitions:
 
 **Important:** The existing middleware runs on the Next.js Edge Runtime. Prisma (`@voicecraft/db`) is NOT edge-compatible. Subscription status must be read from the JWT session token, not from a direct DB query.
 
-**Approach: Store subscription status in the JWT.**
-- In NextAuth `jwt` callback: when the token is created or refreshed, fetch subscription status from DB and embed `subscriptionStatus` and `planTier` in the JWT payload.
-- When a webhook updates subscription status, trigger a session refresh using Auth.js v5's `unstable_update` mechanism (or set a flag that forces re-fetch on next request).
-- Middleware reads `subscriptionStatus` from the JWT — no DB call needed.
-- Tradeoff: status can be stale between session refreshes. Acceptable because enforcement also happens at the API route level (belt and suspenders).
+**Approach: Store subscription status in the JWT with bounded staleness.**
+
+1. Add `subscriptionVersion Int @default(0)` to the User model. Webhook handlers increment this in the same transaction as the Subscription update.
+2. In the NextAuth `jwt` callback: on `trigger === 'signIn'` or when the token is being rotated (per Auth.js `updateAge`, default 24h), fetch subscription status + `subscriptionVersion` from DB and embed `subscriptionStatus`, `planTier`, and `subscriptionVersion` in the JWT.
+3. Middleware reads `subscriptionStatus` from the JWT — no DB call needed.
+
+**Staleness window:** Subscription status in the JWT can be up to `updateAge` (24h by default) stale. This is acceptable because:
+- The middleware only gates redirects (no subscription → choose-plan) and banner display. These are UX concerns, not security.
+- **Real enforcement happens at the API route level** (agent creation, deployment, provisioning) — these routes read from the DB directly, not the JWT. This is the hard gate.
+- Reducing `updateAge` to e.g. 1 hour tightens the window at the cost of more DB reads during token rotation.
+
+**Note:** `unstable_update` from Auth.js v5 is a client-triggered mechanism and cannot be called from a server-side webhook handler. Do not attempt server-push JWT invalidation.
 
 **Middleware behavior:**
 - No subscription in JWT → redirect to `/dashboard/choose-plan`
@@ -346,9 +354,9 @@ Authenticated via Stripe webhook signature verification. Exempt from session aut
 | Event | Action |
 |---|---|
 | `customer.subscription.created` | Upsert local Subscription record + UsageRecord (idempotent — record may already exist from the checkout API response) |
-| `customer.subscription.updated` | Sync status, plan tier, period dates. If status → `past_due`/`canceled`/`unpaid`/`paused`, set local status to PAUSED and pause agents (tear down dispatch rules). |
-| `customer.subscription.deleted` | Set Subscription to `CANCELED`, pause all agents |
-| `invoice.paid` | If was `PAST_DUE`/`PAUSED` → restore to `ACTIVE`, re-create LiveKit dispatch rules for previously-active agents (background task). Create new UsageRecord for new billing period. |
+| `customer.subscription.updated` | Sync status, plan tier, period dates. If Stripe status → `past_due`/`unpaid`/`paused`, set local status to `PAUSED` and pause agents (tear down dispatch rules). **Intentional design:** Stripe's `canceled` status in `updated` events also maps to local `PAUSED` (not `CANCELED`) — this keeps the door open for recovery. Only the `deleted` event is terminal. |
+| `customer.subscription.deleted` | Set Subscription to `CANCELED` (terminal, overrides `PAUSED`), pause all agents. This is the only path to local `CANCELED` status. |
+| `invoice.paid` | If was `PAST_DUE`/`PAUSED` → restore to `ACTIVE`, re-create LiveKit dispatch rules for previously-active agents (background task). Create new UsageRecord for new billing period — read period dates from `invoice.lines.data[0].period.start` / `period.end` (subscription item period), NOT from `invoice.period_start` (invoice period). |
 | `invoice.payment_failed` | Update Subscription to `PAST_DUE`, trigger dunning email |
 | `customer.subscription.trial_will_end` | Send "trial ending in 3 days" email |
 
@@ -397,7 +405,7 @@ Authenticated via Stripe webhook signature verification. Exempt from session aut
 Following the pattern used by Edgee (billions of events) and Stripe's recommendations:
 
 1. **Buffered reporting** — After each call ends, increment `UsageRecord.minutesUsed` in DB (fast local write). A periodic job (every 5 min) batches and reports to Stripe Billing Meters.
-2. **Stripe Billing Meters** — Send events with timestamps and quantities. **Every meter event must include a stable `identifier`** for deduplication — use `usageRecord.id + "-" + batchTimestamp`. Without this, job retries or crashes will cause double-billing.
+2. **Stripe Billing Meters** — Send events with timestamps and quantities. **Every meter event must include a stable `identifier`** for deduplication — use `usageRecord.id` as the identifier (one event per usage record per reporting cycle). The periodic job tracks `lastReportedMinutes` on the UsageRecord and only reports the delta. If the job crashes mid-batch, the same `identifier` with the same quantity is re-sent and Stripe deduplicates it.
 3. **Alert thresholds checked on write** — When incrementing `minutesUsed`, check the returned value against thresholds. Queue alert emails via Resend (non-blocking).
 4. **Daily reconciliation cron** — Compares local UsageRecord totals against Stripe meter readings. Logs discrepancies. Also purges StripeEvent records older than 30 days.
 
@@ -453,6 +461,7 @@ Settings page (`/dashboard/settings`) — new "Plan & Billing" tab. Standard Saa
 - Monthly/annual toggle
 - Upgrade → Stripe prorated subscription update, immediate effect
 - Downgrade → **blocked if current agent count exceeds new plan's `maxAgents`**. Show message: "You currently have X active agents. Please reduce to Y or fewer before downgrading." If agent count is within limit, downgrade takes effect at end of current period (`cancel_at_period_end` + schedule new subscription).
+- **Pending downgrade enforcement:** Once a downgrade is scheduled (`cancelAtPeriodEnd = true`), agent creation is capped at the *incoming* plan's `maxAgents`, not the current plan's. This prevents users from adding agents during the grace period that would exceed the new limit.
 
 ### Choose Plan Page (`/dashboard/choose-plan`)
 
