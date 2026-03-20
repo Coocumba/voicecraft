@@ -63,23 +63,23 @@ export function ChoosePlanClient({ plans }: ChoosePlanClientProps) {
   }
 
   return (
-    <div className="min-h-screen bg-cream flex flex-col items-center px-4 sm:px-6 py-12 sm:py-16">
+    <div className="h-screen bg-cream flex flex-col items-center justify-center px-4 sm:px-6 overflow-hidden">
       {/* Logo */}
       <p className="font-serif text-lg text-ink mb-8">VoiceCraft</p>
 
       {/* Heading */}
-      <div className="text-center mb-10 sm:mb-12 max-w-xl">
-        <h1 className="font-serif text-2xl sm:text-3xl text-ink mb-3">
+      <div className="text-center mb-6 max-w-xl">
+        <h1 className="font-serif text-2xl sm:text-3xl text-ink mb-2">
           Choose your plan
         </h1>
-        <p className="text-sm sm:text-base text-muted leading-relaxed">
+        <p className="text-sm text-muted leading-relaxed">
           Every plan includes a 14-day free trial with full access to all
           features. No credit card required to start.
         </p>
       </div>
 
       {/* Billing toggle */}
-      <div className="flex items-center gap-3 mb-8 sm:mb-10">
+      <div className="flex items-center gap-3 mb-6">
         <span
           className={`text-sm ${!annual ? 'text-ink font-medium' : 'text-muted'}`}
         >

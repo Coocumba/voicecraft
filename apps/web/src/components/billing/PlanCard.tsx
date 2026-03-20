@@ -61,7 +61,7 @@ export function PlanCard({
   return (
     <div
       className={cn(
-        'bg-white rounded-2xl border p-6 sm:p-8 flex flex-col',
+        'bg-white rounded-2xl border p-5 sm:p-6 flex flex-col',
         highlight
           ? 'border-accent ring-2 ring-accent relative'
           : 'border-border'
@@ -75,12 +75,12 @@ export function PlanCard({
         </div>
       )}
 
-      <div className="mb-5">
+      <div className="mb-3">
         <h3 className="font-serif text-xl text-ink mb-1">{name}</h3>
         <p className="text-sm text-muted leading-relaxed">{description}</p>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-4">
         <div className="flex items-baseline gap-1">
           <span className="font-serif text-4xl text-ink">${priceInDollars}</span>
           <span className="text-sm text-muted">/mo</span>
@@ -96,7 +96,7 @@ export function PlanCard({
         onClick={onSelect}
         disabled={loading}
         className={cn(
-          'w-full inline-flex items-center justify-center px-6 py-3 text-sm font-medium rounded-xl transition-colors mb-6',
+          'w-full inline-flex items-center justify-center px-6 py-2.5 text-sm font-medium rounded-xl transition-colors mb-4',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           highlight
             ? 'bg-accent text-white hover:bg-accent/90'
@@ -106,7 +106,7 @@ export function PlanCard({
         {loading ? 'Redirecting…' : ctaLabel}
       </button>
 
-      <ul className="space-y-3 text-sm">
+      <ul className="space-y-2 text-sm">
         <li className="flex items-start gap-2.5">
           <CheckIcon />
           <span className="text-ink">
