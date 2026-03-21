@@ -120,7 +120,7 @@ class DentalReceptionist(Agent):
         logger.debug("agent_entered_session")
 
 
-async def _log_call(
+def _log_call_sync(
     agent_id: str,
     duration_secs: int,
     outcome: str,
@@ -128,9 +128,16 @@ async def _log_call(
     transcript: str | None = None,
     summary: str | None = None,
 ) -> None:
-    """POST call record to the Next.js API. Never raises — catches BaseException
-    so that asyncio.CancelledError (triggered when the LiveKit framework tears
-    down the job after room deletion) does not silently kill the HTTP POST."""
+    """POST call record to the Next.js API using a synchronous HTTP call.
+
+    Uses httpx.Client (sync) instead of AsyncClient so the call blocks the
+    thread until the response arrives. This prevents the LiveKit worker process
+    from exiting before the POST completes — the process cannot terminate while
+    a synchronous call is in progress on the main thread.
+
+    This is intentionally blocking: it runs at the very end of the entrypoint
+    after the call has ended and all async session work is done.
+    """
     try:
         payload: dict[str, Any] = {
             "agentId": agent_id,
@@ -144,14 +151,15 @@ async def _log_call(
         if summary:
             payload["summary"] = summary
 
-        logger.debug("call_log_posting", agent_id=agent_id, url=f"{_WEB_URL}/api/calls",
+        url = f"{_WEB_URL}/api/calls"
+        logger.debug("call_log_posting", agent_id=agent_id, url=url,
                      has_api_key=bool(_API_KEY))
-        resp = await get_http_client().post(
-            f"{_WEB_URL}/api/calls",
-            json=payload,
-            headers={"x-api-key": _API_KEY, "Content-Type": "application/json"},
-            timeout=httpx.Timeout(10.0),
-        )
+        with httpx.Client(timeout=httpx.Timeout(15.0)) as client:
+            resp = client.post(
+                url,
+                json=payload,
+                headers={"x-api-key": _API_KEY, "Content-Type": "application/json"},
+            )
         if resp.status_code in (200, 201):
             logger.info("call_logged", agent_id=agent_id, duration=duration_secs, outcome=outcome)
         else:
@@ -351,44 +359,37 @@ async def entrypoint(ctx: JobContext) -> None:
     # Block until the call hangs up. No timeout — calls last as long as needed.
     await session_closed.wait()
 
-    # Log the call in a shielded coroutine so that framework-level task
-    # cancellation (triggered by end_call deleting the room) cannot kill
-    # the HTTP POST mid-flight. asyncio.shield prevents CancelledError
-    # from propagating into the inner coroutine.
-    async def _post_call_log() -> None:
-        duration = int(time.monotonic() - call_start)
-        if not agent_id:
-            log.warning("call_not_logged", reason="no agent_id", duration=duration)
-            return
+    # Log the call using a SYNCHRONOUS HTTP call. The LiveKit framework
+    # terminates the worker process shortly after the session closes —
+    # async calls (even shielded ones) get killed when the event loop
+    # shuts down. A synchronous POST blocks the main thread, preventing
+    # the process from exiting until the response arrives.
+    duration = int(time.monotonic() - call_start)
+    if not agent_id:
+        log.warning("call_not_logged", reason="no agent_id", duration=duration)
+        return
 
-        log.info("call_ended", agent_id=agent_id, duration=duration)
+    log.info("call_ended", agent_id=agent_id, duration=duration)
 
-        transcript_lines: list[str] = []
-        try:
-            for message in session.history.messages():
-                text = message.text_content
-                if text:
-                    label = "Caller" if message.role == "user" else "Agent"
-                    transcript_lines.append(f"[{label}] {text}")
-        except BaseException:
-            transcript_lines.append("[System] Transcript may be incomplete.")
-
-        transcript = "\n".join(transcript_lines) if transcript_lines else None
-
-        await _log_call(
-            agent_id=agent_id,
-            duration_secs=duration,
-            outcome="COMPLETED",
-            caller_number=caller_number,
-            transcript=transcript,
-        )
-
+    transcript_lines: list[str] = []
     try:
-        await asyncio.shield(_post_call_log())
-    except asyncio.CancelledError:
-        # The framework cancelled our entrypoint, but shield() kept
-        # _post_call_log running. Wait briefly for it to finish.
-        log.warning("entrypoint_cancelled_during_log", detail="shield kept log alive")
+        for message in session.history.messages():
+            text = message.text_content
+            if text:
+                label = "Caller" if message.role == "user" else "Agent"
+                transcript_lines.append(f"[{label}] {text}")
+    except BaseException:
+        transcript_lines.append("[System] Transcript may be incomplete.")
+
+    transcript = "\n".join(transcript_lines) if transcript_lines else None
+
+    _log_call_sync(
+        agent_id=agent_id,
+        duration_secs=duration,
+        outcome="COMPLETED",
+        caller_number=caller_number,
+        transcript=transcript,
+    )
 
 
 if __name__ == "__main__":
