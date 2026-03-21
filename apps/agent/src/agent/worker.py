@@ -128,7 +128,9 @@ async def _log_call(
     transcript: str | None = None,
     summary: str | None = None,
 ) -> None:
-    """POST call record to the Next.js API. Fire-and-forget — never raises."""
+    """POST call record to the Next.js API. Never raises — catches BaseException
+    so that asyncio.CancelledError (triggered when the LiveKit framework tears
+    down the job after room deletion) does not silently kill the HTTP POST."""
     try:
         payload: dict[str, Any] = {
             "agentId": agent_id,
@@ -154,8 +156,8 @@ async def _log_call(
             logger.info("call_logged", agent_id=agent_id, duration=duration_secs, outcome=outcome)
         else:
             logger.error("call_log_failed", status=resp.status_code, body=resp.text[:256])
-    except Exception as exc:
-        logger.error("call_log_error", error=str(exc))
+    except BaseException as exc:
+        logger.error("call_log_error", error=str(exc), error_type=type(exc).__name__)
 
 
 # OpenAI TTS voice mapping by gender and style
@@ -349,11 +351,16 @@ async def entrypoint(ctx: JobContext) -> None:
     # Block until the call hangs up. No timeout — calls last as long as needed.
     await session_closed.wait()
 
-    # Log the call directly in the entrypoint (not via create_task) so that
-    # the function stays alive and the process is not torn down before the
-    # HTTP POST completes.
-    duration = int(time.monotonic() - call_start)
-    if agent_id:
+    # Log the call in a shielded coroutine so that framework-level task
+    # cancellation (triggered by end_call deleting the room) cannot kill
+    # the HTTP POST mid-flight. asyncio.shield prevents CancelledError
+    # from propagating into the inner coroutine.
+    async def _post_call_log() -> None:
+        duration = int(time.monotonic() - call_start)
+        if not agent_id:
+            log.warning("call_not_logged", reason="no agent_id", duration=duration)
+            return
+
         log.info("call_ended", agent_id=agent_id, duration=duration)
 
         transcript_lines: list[str] = []
@@ -363,7 +370,7 @@ async def entrypoint(ctx: JobContext) -> None:
                 if text:
                     label = "Caller" if message.role == "user" else "Agent"
                     transcript_lines.append(f"[{label}] {text}")
-        except Exception:
+        except BaseException:
             transcript_lines.append("[System] Transcript may be incomplete.")
 
         transcript = "\n".join(transcript_lines) if transcript_lines else None
@@ -375,8 +382,13 @@ async def entrypoint(ctx: JobContext) -> None:
             caller_number=caller_number,
             transcript=transcript,
         )
-    else:
-        log.warning("call_not_logged", reason="no agent_id", duration=duration)
+
+    try:
+        await asyncio.shield(_post_call_log())
+    except asyncio.CancelledError:
+        # The framework cancelled our entrypoint, but shield() kept
+        # _post_call_log running. Wait briefly for it to finish.
+        log.warning("entrypoint_cancelled_during_log", detail="shield kept log alive")
 
 
 if __name__ == "__main__":
