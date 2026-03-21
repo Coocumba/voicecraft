@@ -1,5 +1,6 @@
 import { auth } from "@/auth"
 import { prisma, CallOutcome } from "@voicecraft/db"
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library"
 import { incrementUsage, checkThresholdCrossed, isTrialMinutesExhausted } from "@/lib/usage"
 import { getCurrentUsageRecord, pauseUserAgents } from "@/lib/subscription"
 
@@ -236,10 +237,10 @@ export async function POST(request: Request) {
 
     return Response.json({ call: { id: call.id } }, { status: 201 })
   } catch (err) {
-    // If the call create fails (e.g. invalid agentId foreign key),
-    // check if it's a not-found error
-    const message = err instanceof Error ? err.message : String(err)
-    if (message.includes("Foreign key constraint")) {
+    // If the call create fails due to invalid agentId (FK violation),
+    // return 404 instead of 500. Uses Prisma error code P2003 which is
+    // stable across versions, unlike error message text.
+    if (err instanceof PrismaClientKnownRequestError && err.code === "P2003") {
       return Response.json({ error: "Agent not found" }, { status: 404 })
     }
     console.error("[POST /api/calls]", err)
