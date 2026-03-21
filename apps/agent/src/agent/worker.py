@@ -333,48 +333,11 @@ async def entrypoint(ctx: JobContext) -> None:
 
     call_start = time.monotonic()
 
-    # Two events track the session lifecycle:
-    # 1. session_closed — fires when the LiveKit session ends (call hangs up)
-    # 2. log_done — fires when the POST to /api/calls completes (or fails)
     session_closed = asyncio.Event()
-    log_done = asyncio.Event()
-
-    async def _do_log_call() -> None:
-        """Async wrapper for call logging — awaited to guarantee completion."""
-        try:
-            duration = int(time.monotonic() - call_start)
-            if not agent_id:
-                log.warning("call_not_logged", reason="no agent_id", duration=duration)
-                return
-            log.info("call_ended", agent_id=agent_id, duration=duration)
-
-            # Build transcript with a note if it may be incomplete
-            transcript_lines: list[str] = []
-            try:
-                for message in session.history.messages():
-                    text = message.text_content
-                    if text:
-                        label = "Caller" if message.role == "user" else "Agent"
-                        transcript_lines.append(f"[{label}] {text}")
-            except Exception:
-                transcript_lines.append("[System] Transcript may be incomplete.")
-
-            transcript = "\n".join(transcript_lines) if transcript_lines else None
-
-            await _log_call(
-                agent_id=agent_id,
-                duration_secs=duration,
-                outcome="COMPLETED",
-                caller_number=caller_number,
-                transcript=transcript,
-            )
-        finally:
-            log_done.set()
 
     @session.on("close")
     def _on_session_close() -> None:
         session_closed.set()
-        asyncio.create_task(_do_log_call())
 
     await session.start(agent=agent, room=ctx.room)
     log.info("session_ready")
@@ -383,17 +346,37 @@ async def entrypoint(ctx: JobContext) -> None:
     # LLM exactly what to say first rather than waiting for the caller to speak.
     await session.generate_reply(instructions=greeting)
 
-    # Wait for the session to end (call hangs up). No timeout here — the call
-    # can last as long as it needs to.
+    # Block until the call hangs up. No timeout — calls last as long as needed.
     await session_closed.wait()
 
-    # Now that the session is closed, wait for the call log POST to complete.
-    # This has a timeout so the entrypoint isn't held indefinitely if the
-    # Next.js API is slow or unreachable.
-    try:
-        await asyncio.wait_for(log_done.wait(), timeout=15.0)
-    except asyncio.TimeoutError:
-        log.warning("call_log_timeout", detail="call log did not complete within 15 s; proceeding with teardown")
+    # Log the call directly in the entrypoint (not via create_task) so that
+    # the function stays alive and the process is not torn down before the
+    # HTTP POST completes.
+    duration = int(time.monotonic() - call_start)
+    if agent_id:
+        log.info("call_ended", agent_id=agent_id, duration=duration)
+
+        transcript_lines: list[str] = []
+        try:
+            for message in session.history.messages():
+                text = message.text_content
+                if text:
+                    label = "Caller" if message.role == "user" else "Agent"
+                    transcript_lines.append(f"[{label}] {text}")
+        except Exception:
+            transcript_lines.append("[System] Transcript may be incomplete.")
+
+        transcript = "\n".join(transcript_lines) if transcript_lines else None
+
+        await _log_call(
+            agent_id=agent_id,
+            duration_secs=duration,
+            outcome="COMPLETED",
+            caller_number=caller_number,
+            transcript=transcript,
+        )
+    else:
+        log.warning("call_not_logged", reason="no agent_id", duration=duration)
 
 
 if __name__ == "__main__":
