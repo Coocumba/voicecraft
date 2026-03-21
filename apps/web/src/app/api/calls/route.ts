@@ -190,42 +190,51 @@ export async function POST(request: Request) {
       include: { agent: { select: { userId: true } } },
     })
 
-    // Return the response immediately — the agent worker doesn't need
-    // to wait for usage tracking or contact upserts.
-    const response = Response.json({ call: { id: call.id } }, { status: 201 })
-
-    // Usage tracking and contact upsert run after the response is sent.
-    // We use waitUntil-style fire-and-forget so the agent gets a fast 201.
+    // Run usage tracking and contact upsert in parallel — both are
+    // independent of each other and neither blocks the call record.
+    // We must await them (not fire-and-forget) because serverless
+    // platforms kill pending promises once the response is returned.
     const userId = call.agent.userId
+    const backgroundTasks: Promise<void>[] = []
 
     if (typeof duration === "number" && duration > 0) {
-      trackUsageAfterCall(userId, duration).catch((err) => {
-        console.error("[POST /api/calls] Usage tracking failed", err)
-      })
+      backgroundTasks.push(
+        trackUsageAfterCall(userId, duration).catch((err) => {
+          console.error("[POST /api/calls] Usage tracking failed", err)
+        })
+      )
     }
 
     if (typeof callerNumber === "string" && callerNumber.trim() !== "") {
       const phone = callerNumber.trim()
-      prisma.contact
-        .upsert({
-          where: { userId_phone: { userId, phone } },
-          update: {
-            callCount: { increment: 1 },
-            lastCalledAt: new Date(),
-          },
-          create: {
-            userId,
-            phone,
-            callCount: 1,
-            lastCalledAt: new Date(),
-          },
-        })
-        .catch((err: unknown) => {
-          console.error("[POST /api/calls] contact upsert failed", err)
-        })
+      backgroundTasks.push(
+        prisma.contact
+          .upsert({
+            where: { userId_phone: { userId, phone } },
+            update: {
+              callCount: { increment: 1 },
+              lastCalledAt: new Date(),
+            },
+            create: {
+              userId,
+              phone,
+              callCount: 1,
+              lastCalledAt: new Date(),
+            },
+          })
+          .then(() => {})
+          .catch((err: unknown) => {
+            console.error("[POST /api/calls] contact upsert failed", err)
+          })
+      )
     }
 
-    return response
+    // Await all background tasks in parallel — the agent worker waits
+    // for this response, but the tasks run concurrently so total latency
+    // is max(usage_tracking, contact_upsert) rather than their sum.
+    await Promise.allSettled(backgroundTasks)
+
+    return Response.json({ call: { id: call.id } }, { status: 201 })
   } catch (err) {
     // If the call create fails (e.g. invalid agentId foreign key),
     // check if it's a not-found error
