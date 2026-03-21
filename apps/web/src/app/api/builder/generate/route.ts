@@ -17,6 +17,7 @@ Output ONLY a JSON object with no surrounding text, code fences, or explanation.
 
 {
   "business_name": "string",
+  "business_type": "string",
   "hours": {
     "monday":    { "open": "HH:MM", "close": "HH:MM" } | null,
     "tuesday":   { "open": "HH:MM", "close": "HH:MM" } | null,
@@ -47,6 +48,7 @@ Rules:
 - voice.gender should be "male" or "female". voice.style is a brief descriptor like "warm", "calm", "energetic" (use "warm" as default).
 - If a field cannot be determined from the conversation, use a sensible default (e.g., empty array, "friendly" tone, "female" voice gender, "en" language).
 - Adapt the services list to the actual business type (products, services, offerings, menu items, etc.).
+- business_type is a short descriptor of what the organization is (e.g. "dental clinic", "restaurant", "law firm", "gym", "university department"). Infer from the conversation context.
 - Set can_book_appointments to true if the conversation mentions booking, scheduling, appointments, or reservations. Set to false for info-only or message-taking agents.
 - Infer timezone from the business location if mentioned. Use IANA timezone format (e.g. "America/New_York", "Asia/Kolkata"). Set to null if location is unclear.
 - Never add extra keys or wrapper objects.`

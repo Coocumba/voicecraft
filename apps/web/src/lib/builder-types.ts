@@ -16,6 +16,7 @@ export interface VoicePreference {
 
 export interface AgentConfig {
   business_name?: string
+  business_type?: string
   hours?: Record<string, DayHours | null>
   services?: ServiceItem[]
   tone?: string
