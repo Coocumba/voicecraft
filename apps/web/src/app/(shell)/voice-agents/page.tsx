@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { prisma, AgentStatus } from '@voicecraft/db'
 import { formatDate } from '@/lib/date-utils'
 import { VoiceAgentsEmptyState } from '@/components/agents/VoiceAgentsEmptyState'
+import { getEffectiveMaxAgents } from '@/lib/plans'
 
 export const metadata = { title: 'Voice Agents' }
 
@@ -30,28 +31,49 @@ export default async function VoiceAgentsPage() {
   const session = await getSession()
   if (!session?.user?.id) redirect('/login')
 
-  const agents = await prisma.agent.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: 'desc' },
-    include: {
-      _count: { select: { calls: true, appointments: true } },
-    },
-  })
+  const [agents, subscription] = await Promise.all([
+    prisma.agent.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: { select: { calls: true, appointments: true } },
+      },
+    }),
+    prisma.subscription.findUnique({
+      where: { userId: session.user.id },
+      include: { plan: true },
+    }),
+  ])
 
   if (agents.length === 0) {
     return <VoiceAgentsEmptyState />
   }
 
+  const maxAgents = await getEffectiveMaxAgents(subscription)
+  const activeAgentCount = agents.filter(
+    (a) => a.status !== AgentStatus.INACTIVE
+  ).length
+  const canCreateAgent = activeAgentCount < maxAgents
+
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between gap-4 mb-8">
         <h1 className="font-serif text-2xl sm:text-3xl text-ink">Voice Agents</h1>
-        <Link
-          href="/voice-agents/new"
-          className="bg-accent text-white px-4 py-2 rounded-lg text-sm hover:bg-accent/90 font-medium transition-colors"
-        >
-          + New Agent
-        </Link>
+        {canCreateAgent ? (
+          <Link
+            href="/voice-agents/new"
+            className="bg-accent text-white px-4 py-2 rounded-lg text-sm hover:bg-accent/90 font-medium transition-colors"
+          >
+            + New Agent
+          </Link>
+        ) : (
+          <Link
+            href="/settings?tab=billing"
+            className="text-sm text-accent hover:text-accent/80 font-medium transition-colors"
+          >
+            Upgrade to add more agents
+          </Link>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
