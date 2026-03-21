@@ -1,3 +1,5 @@
+import { SidebarNav } from './SidebarNav'
+
 interface Section {
   id: string
   title: string
@@ -31,21 +33,7 @@ export function LegalPageLayout({ sections, children }: LegalPageLayoutProps) {
       <div className="lg:flex lg:gap-10">
         {/* Sticky sidebar — hidden on mobile, visible on lg+ */}
         <aside className="hidden lg:block w-56 flex-shrink-0">
-          <nav className="sticky top-20">
-            <h2 className="font-serif text-sm text-ink mb-3">On this page</h2>
-            <ol className="space-y-1.5 border-l border-border pl-4">
-              {sections.map((s, i) => (
-                <li key={s.id}>
-                  <a
-                    href={`#${s.id}`}
-                    className="text-[13px] text-muted hover:text-ink transition-colors leading-snug block"
-                  >
-                    {i + 1}. {s.title}
-                  </a>
-                </li>
-              ))}
-            </ol>
-          </nav>
+          <SidebarNav sections={sections} />
         </aside>
 
         {/* Content area */}
